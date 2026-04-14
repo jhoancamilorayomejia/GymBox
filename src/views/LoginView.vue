@@ -14,8 +14,10 @@ const enviado  = ref(false)
 const mostrarModal = ref(false)
 const errorMsg = ref('')
 const loading  = ref(false)
+
 const mostrarLogin = ref(false)
 
+// Login
 const loginEmail    = ref('')
 const loginPassword = ref('')
 const loginError    = ref('')
@@ -24,23 +26,42 @@ const loginLoading  = ref(false)
 const loginAdmin = async () => {
   loginLoading.value = true
   loginError.value = ''
+
   try {
+    const payload = {
+      username: loginEmail.value,
+      password: loginPassword.value
+    }
+
+    // ✅ Ruta relativa — funciona en desarrollo y producción
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: loginEmail.value, password: loginPassword.value })
+      body: JSON.stringify(payload)
     })
+
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Usuario o contraseña incorrectos')
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Usuario o contraseña incorrectos')
+    }
+
+    // ✅ Guardar sesión
     localStorage.setItem('token', data.token)
     localStorage.setItem('rol', data.rol)
     localStorage.setItem('username', data.user)
+
     mostrarLogin.value = false
-    if (data.rol === 'admin' || data.rol === 'proveedor') {
+
+    // ✅ Redirección por rol
+    if (data.rol === 'admin') {
+      router.push('/api/proyectos')
+    } else if (data.rol === 'proveedor') {
       router.push('/api/proyectos')
     } else {
       router.push('/api/login')
     }
+
   } catch (err) {
     loginError.value = err.message
   } finally {
@@ -48,10 +69,12 @@ const loginAdmin = async () => {
   }
 }
 
-const formValido = computed(() =>
-  nombre.value && whatsapp.value.length === 12 && fecha.value && hora.value
-)
+// ✅ Validación
+const formValido = computed(() => {
+  return nombre.value && whatsapp.value.length === 12 && fecha.value && hora.value
+})
 
+// ✅ Formatear WhatsApp y limitar a 10 dígitos
 const formatearWhatsApp = (value) => {
   const numeros = value.replace(/\D/g, '').slice(0, 10)
   const partes = []
@@ -63,129 +86,93 @@ const formatearWhatsApp = (value) => {
 
 watch(whatsapp, (newVal) => {
   const formateado = formatearWhatsApp(newVal)
-  if (formateado !== newVal) whatsapp.value = formateado
+  if (formateado !== newVal) {
+    whatsapp.value = formateado
+  }
 })
 
+// ✅ Fechas disponibles (próximos 30 días excepto domingos)
 const fechasDisponibles = computed(() => {
   const dias = []
   const cursor = new Date()
   cursor.setHours(0, 0, 0, 0)
+
   while (dias.length < 30) {
     cursor.setDate(cursor.getDate() + 1)
     if (cursor.getDay() !== 0) dias.push(new Date(cursor))
   }
+
   return dias
 })
 
 const formatearFecha = (d) =>
-  d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
-    .replace(/^\w/, c => c.toUpperCase())
+  d.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  }).replace(/^\w/, c => c.toUpperCase())
 
-const DURACION_MINUTOS = 60
-
+// ✅ Horas disponibles
 const horasDisponibles = computed(() => {
   const horas = []
   for (let h = 6; h <= 20; h++) {
-    for (let m = 0; m < 60; m += DURACION_MINUTOS) {
-      if (h === 20 && m > 0) continue
-      horas.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
+    for (let m of [0, 30]) {
+      if (h === 20 && m === 30) continue
+      const hh = String(h).padStart(2, '0')
+      const mm = String(m).padStart(2, '0')
+      horas.push(`${hh}:${mm}`)
     }
   }
   return horas
 })
 
-watch(fecha, () => { hora.value = '' })
+// Reset hora si cambia fecha
+watch(fecha, () => {
+  hora.value = ''
+})
 
+// ✅ PDF
 const generarPDF = () => {
   const doc = new jsPDF()
 
   const fechaFormateada = new Date(`${fecha.value}T${hora.value}`)
-    .toLocaleString('es-CO')
+    .toLocaleString('es-AR')
 
-  // 🎨 COLORES
-  const dorado = [180, 145, 80]
-  const negro = [13, 13, 13]
-
-  // 🧾 FONDO (opcional claro elegante)
-  doc.setFillColor(245, 240, 230)
-  doc.rect(0, 0, 210, 297, 'F')
-
-  // 🧱 HEADER
-  doc.setFont('Helvetica', 'bold')
-  doc.setFontSize(22)
-  doc.setTextColor(...negro)
-  doc.text('Barber Charly', 105, 25, { align: 'center' })
+  doc.setFont("Helvetica", "bold")
+  doc.setFontSize(16)
+  doc.text("Confirmación de Reserva", 20, 20)
 
   doc.setFontSize(12)
-  doc.setTextColor(120)
-  doc.text('Comprobante de Reserva', 105, 32, { align: 'center' })
+  doc.setFont("Helvetica", "normal")
 
-  // 🔶 Línea decorativa
-  doc.setDrawColor(...dorado)
-  doc.setLineWidth(1)
-  doc.line(40, 36, 170, 36)
-
-  // 📦 CAJA DE DATOS
-  doc.setDrawColor(200)
-  doc.setLineWidth(0.5)
-  doc.roundedRect(20, 50, 170, 80, 5, 5)
-
-  // 📋 CONTENIDO
-  let y = 65
-
-  doc.setFontSize(12)
-  doc.setTextColor(80)
-
-  doc.text('Nombre:', 30, y)
-  doc.setTextColor(...negro)
-  doc.text(nombre.value, 80, y)
-
-  y += 12
-  doc.setTextColor(80)
-  doc.text('Teléfono:', 30, y)
-  doc.setTextColor(...negro)
-  doc.text(whatsapp.value, 80, y)
-
-  y += 12
-  doc.setTextColor(80)
-  doc.text('Fecha y hora:', 30, y)
-  doc.setTextColor(...negro)
-  doc.text(fechaFormateada, 80, y)
+  doc.text(`Nombre: ${nombre.value}`, 20, 40)
+  doc.text(`Teléfono: ${whatsapp.value}`, 20, 50)
+  doc.text(`Fecha y hora: ${fechaFormateada}`, 20, 60)
 
   if (notas.value) {
-    y += 12
-    doc.setTextColor(80)
-    doc.text('Notas:', 30, y)
-    doc.setTextColor(...negro)
-
-    const splitNotas = doc.splitTextToSize(notas.value, 90)
-    doc.text(splitNotas, 80, y)
+    doc.text(`Notas: ${notas.value}`, 20, 70)
   }
 
-  // ✂️ MENSAJE FINAL
-  doc.setFont('Helvetica', 'italic')
-  doc.setFontSize(13)
-  doc.setTextColor(...dorado)
-  doc.text('✂ Gracias por confiar en nuestro estilo ✂', 105, 150, { align: 'center' })
+  doc.text("Gracias por tu reserva 🙌", 20, 90)
 
-  // 📅 FOOTER
-  doc.setFontSize(9)
-  doc.setTextColor(140)
-  doc.text('Este documento es un comprobante de tu reserva.', 105, 280, { align: 'center' })
-
-  // 💾 GUARDAR
   doc.save(`reserva-${nombre.value}.pdf`)
 }
 
+// ✅ Abrir modal
 const enviar = () => {
-  if (!formValido.value) { errorMsg.value = 'Completa todos los campos'; return }
+  if (!formValido.value) {
+    errorMsg.value = 'Completa todos los campos'
+    return
+  }
   errorMsg.value = ''
   mostrarModal.value = true
 }
 
+// ✅ Confirmar reserva
 const confirmarReserva = async () => {
   loading.value = true
   errorMsg.value = ''
+
   try {
     const payload = {
       name: nombre.value,
@@ -193,21 +180,46 @@ const confirmarReserva = async () => {
       reservation_date: `${fecha.value} ${hora.value}`,
       note: notas.value
     }
+
     const token = localStorage.getItem('token')
+
     const res = await fetch('/api/reservations', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify(payload)
     })
-    if (res.status === 401) { localStorage.removeItem('token'); router.push('/api/login'); return }
+
+    if (res.status === 401) {
+      localStorage.removeItem('token')
+      router.push('/api/login')
+      return
+    }
+
     const text = await res.text()
+
     let data
-    try { data = JSON.parse(text) } catch { throw new Error('Respuesta inválida: ' + text) }
-    if (!res.ok) throw new Error(data.error || 'Error desconocido')
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error("Respuesta inválida del servidor: " + text)
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Error desconocido')
+    }
+
     generarPDF()
+
     mostrarModal.value = false
     enviado.value = true
-    setTimeout(() => router.push('/dashboard'), 2000)
+
+    setTimeout(() => {
+      router.push('/api/proyectos')
+    }, 2000)
+
   } catch (error) {
     errorMsg.value = error.message
   } finally {
@@ -215,6 +227,7 @@ const confirmarReserva = async () => {
   }
 }
 
+// ✅ Reset
 const nuevaReserva = () => {
   nombre.value = ''
   whatsapp.value = ''
@@ -224,61 +237,49 @@ const nuevaReserva = () => {
   enviado.value = false
   errorMsg.value = ''
 }
-
-const scrollToForm = () => {
-  document.getElementById('reservas')?.scrollIntoView({ behavior: 'smooth' })
-}
 </script>
 
 <template>
-  <div class="page">
+  <div class="screen">
     <div class="bg-grid"></div>
     <div class="glow left"></div>
     <div class="glow right"></div>
 
-    <!-- ── HERO ── -->
-    <section class="hero">
-      <div class="hero-inner">
-        <span class="eyebrow">Barbería &amp; Estilo</span>
-        <h1 class="hero-title">
-          Barber Charly
-          <em>Tu estilo empieza donde termina lo común</em>
-        </h1>
-        <p class="hero-sub">Agendá tu turno en segundos.</p>
-        <div class="hero-actions">
-          <button class="btn-hero" @click="scrollToForm">✂ Agendar turno</button>
-          <button class="btn-ghost" @click="mostrarLogin = true">Administrador</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── FORMULARIO ── -->
-    <section class="section-form" id="reservas">
-      <div class="section-header">
+    <div class="card">
+      <header class="card-header">
         <span class="eyebrow">Reservá online</span>
-        <h2 class="section-title">Agendar Turno</h2>
-        <p class="section-sub">Completá el formulario y confirmamos tu turno al instante.</p>
+        <h1>Agendar Turno</h1>
+        <p class="subtitle">Completá el formulario y confirmamos tu turno al instante.</p>
         <div class="divider"><span></span><span class="diamond">◆</span><span></span></div>
-      </div>
+      </header>
 
       <transition name="fade" mode="out-in">
+
+        <!-- ── ÉXITO ── -->
         <div v-if="enviado" class="success-panel" key="ok">
           <div class="success-icon">✦</div>
-          <h3>¡Turno solicitado!</h3>
-          <p>Te contactaremos por WhatsApp para confirmar.</p>
-          <button class="btn-main btn-outline-gold" @click="nuevaReserva">Hacer otra reserva</button>
+          <h2>¡Turno solicitado!</h2>
+          <p>Te contactaremos por WhatsApp para confirmar tu reserva.</p>
+          <button class="btn-outline" @click="nuevaReserva">Hacer otra reserva</button>
         </div>
 
+        <!-- ── FORMULARIO ── -->
         <form v-else key="form" class="form" @submit.prevent="enviar">
 
           <div class="field">
-            <label>Nombre completo <span class="req">*</span></label>
-            <input v-model="nombre" type="text" required placeholder="Ej: Jhoan Camilo..." autocomplete="name" />
+            <label>Escriba tu nombre completo<span class="req">*</span></label>
+            <input v-model="nombre" type="text" required placeholder="Ej: Jhoan Camilo..." />
           </div>
 
           <div class="field">
             <label>WhatsApp <span class="req">*</span></label>
-            <input v-model="whatsapp" type="tel" required placeholder="323 517 9341" maxlength="12" autocomplete="tel" />
+            <input
+              v-model="whatsapp"
+              type="tel"
+              required
+              placeholder="323 517 9341"
+              maxlength="12"
+            />
             <span class="hint">Para confirmar o consultar tu turno</span>
           </div>
 
@@ -290,10 +291,13 @@ const scrollToForm = () => {
                 v-for="d in fechasDisponibles"
                 :key="d.toISOString()"
                 :value="d.toISOString().split('T')[0]"
-              >{{ formatearFecha(d) }}</option>
+              >
+                {{ formatearFecha(d) }}
+              </option>
             </select>
           </div>
 
+          <!-- Solo aparece si hay fecha -->
           <div v-if="fecha" class="field">
             <label>Horario <span class="req">*</span></label>
             <div class="horas-grid">
@@ -304,7 +308,9 @@ const scrollToForm = () => {
                 class="hora-btn"
                 :class="{ active: hora === h }"
                 @click="hora = h"
-              >{{ h }}</button>
+              >
+                {{ h }}
+              </button>
             </div>
           </div>
 
@@ -313,423 +319,331 @@ const scrollToForm = () => {
             <textarea v-model="notas" rows="3" placeholder="Alguna preferencia o consulta especial..."></textarea>
           </div>
 
-          <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
-
-          <button type="submit" class="btn-main btn-gold">
-            ✂ Confirmar Turno
+          <button type="submit" class="btn-primary">
+            <span>Confirmar Turno</span>
           </button>
+
+          <!-- Enlace para iniciar sesión -->
+          <div class="login-link">
+            <a href="#" @click.prevent="mostrarLogin = true">¿Eres Administrador? Iniciar sesión</a>
+          </div>
+
         </form>
       </transition>
-    </section>
+    </div>
 
-    <!-- ── FOOTER ── -->
-    <footer class="footer">
-      <p class="footer-text">© 2026 Barber Charly · Todos los derechos reservados.</p>
-    </footer>
-
-    <!-- ── MODAL CONFIRMACIÓN PANTALLA COMPLETA ── -->
-    <div v-if="mostrarModal" class="fullscreen-modal">
-      <div class="fs-inner">
-        <div class="fs-icon">✦</div>
-        <h2 class="fs-title">Confirmar reserva</h2>
-        <p class="fs-sub">¿Confirmás tu turno?</p>
-        <div class="fs-actions">
-          <button class="btn-main btn-gold" @click="confirmarReserva" :disabled="loading">
-            {{ loading ? 'Guardando...' : 'Sí, confirmar' }}
+    <!-- Modal confirmación reserva -->
+    <div v-if="mostrarModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Confirmar reserva</h3>
+        <p>¿Deseas confirmar tu turno?</p>
+        <div class="modal-actions">
+          <button class="btn-outline" @click="mostrarModal = false">Cancelar</button>
+          <button class="btn-primary" @click="confirmarReserva" :disabled="loading">
+            <span>{{ loading ? 'Guardando...' : 'Confirmar' }}</span>
           </button>
-          <button class="btn-main btn-outline-gold" @click="mostrarModal = false">Cancelar</button>
         </div>
-        <p v-if="errorMsg" class="error-msg" style="margin-top:16px">{{ errorMsg }}</p>
+        <p v-if="errorMsg" style="color:#c0392b; font-size:.75rem; text-align:center;">
+          {{ errorMsg }}
+        </p>
       </div>
     </div>
 
-    <!-- ── LOGIN PANTALLA COMPLETA ── -->
-    <div v-if="mostrarLogin" class="fullscreen-modal">
-      <div class="fs-inner">
-        <button class="fs-close" @click="mostrarLogin = false">✕</button>
-        <div class="fs-icon">🔐</div>
-        <h2 class="fs-title">Administrador</h2>
-        <p class="fs-sub">Ingresá tus credenciales</p>
-        <div class="fs-form">
-          
-          <div class="field">
-            <label>Usuario</label>
-            <input type="text" v-model="loginEmail" placeholder="Tu usuario" autocomplete="username" />
-          </div>
-          <div class="field">
-            <label>Contraseña</label>
-            <input type="password" v-model="loginPassword" placeholder="••••••••" autocomplete="current-password" />
-          </div>
-          <p v-if="loginError" class="error-msg">{{ loginError }}</p>
-          <button class="btn-main btn-gold" @click="loginAdmin" :disabled="loginLoading">
-            {{ loginLoading ? 'Ingresando...' : 'Ingresar' }}
-          </button>
-          <button 
-  class="btn-main btn-outline-gold" 
-  @click="mostrarLogin = false"
->
-  Cancelar
-</button>
+    <!-- Modal de Login -->
+    <div v-if="mostrarLogin" class="modal-overlay">
+      <div class="modal">
+        <h3>Iniciar sesión</h3>
+        <div class="field">
+          <label>Usuario</label>
+          <input type="text" v-model="loginEmail" placeholder="Tu usuario" />
         </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" v-model="loginPassword" placeholder="********" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-outline" @click="mostrarLogin = false">Cancelar</button>
+          <button class="btn-primary" @click="loginAdmin" :disabled="loginLoading">
+            <span>{{ loginLoading ? 'Ingresando...' : 'Ingresar' }}</span>
+          </button>
+        </div>
+        <p v-if="loginError" style="color:#c0392b; font-size:.75rem; text-align:center;">
+          {{ loginError }}
+        </p>
       </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Montserrat:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── BASE ── */
-.page {
+.screen {
   min-height: 100vh;
   background: #0d0d0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 16px;
   font-family: 'Montserrat', sans-serif;
   position: relative;
-  overflow-x: hidden;
-  color: #f0e6d0;
-  margin: 0;
-  padding: 0;
+  overflow: hidden;
 }
-
-
 
 .bg-grid {
   position: fixed; inset: 0;
   background-image:
-    linear-gradient(rgba(180,145,80,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180,145,80,.025) 1px, transparent 1px);
+    linear-gradient(rgba(180,145,80,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,145,80,.03) 1px, transparent 1px);
   background-size: 60px 60px;
-  pointer-events: none; z-index: 0;
+  pointer-events: none;
 }
 
 .glow {
-  position: fixed; border-radius: 50%;
-  filter: blur(140px); pointer-events: none; z-index: 0;
+  position: fixed;
   width: 500px; height: 500px;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  opacity: .3;
 }
-.glow.left  { background: radial-gradient(circle, rgba(180,145,80,.12), transparent 70%); top: -100px; left: -150px; }
-.glow.right { background: radial-gradient(circle, rgba(180,145,80,.08), transparent 70%); bottom: -100px; right: -150px; }
+.glow.left  { background: radial-gradient(circle, #b4915025, transparent 70%); top: -100px; left: -150px; }
+.glow.right { background: radial-gradient(circle, #b4915015, transparent 70%); bottom: -100px; right: -150px; }
 
-/* ── HERO ── */
-.hero {
-  position: relative; z-index: 1;
-  min-height: 50vh;
-  display: flex; align-items: center; justify-content: center;
-  text-align: center;
-  padding: 60px 20px 48px;
-  border-bottom: 1px solid rgba(180,145,80,.1);
+/* ── Tarjeta ── */
+.card {
+  position: relative;
+  width: 100%; max-width: 520px;
+  background: #141414;
+  border: 1px solid rgba(180,145,80,.2);
+  box-shadow: 0 32px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(180,145,80,.08);
+  padding: 48px 44px 44px;
+  animation: cardIn .65s cubic-bezier(.16,1,.3,1) both;
+}
+.card::before, .card::after {
+  content: ''; position: absolute;
+  width: 20px; height: 20px;
+  border-color: #b49150; border-style: solid;
+}
+.card::before { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+.card::after  { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.hero-inner { max-width: 680px; width: 100%; }
+/* ── Header ── */
+.card-header { text-align: center; margin-bottom: 36px; }
 
 .eyebrow {
-  display: inline-block;
-  font-size: 26px; letter-spacing: .35em;
-  text-transform: uppercase; color: #b49150;
-  margin-bottom: 20px;
+  display: block;
+  font-size: .63rem; letter-spacing: .3em;
+  text-transform: uppercase; color: #b49150; margin-bottom: 10px;
 }
-
-.hero-title {
+.card-header h1 {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2.6rem, 10vw, 7rem);
-  font-weight: 600; line-height: 1.1;
-  color: #f0e6d0; margin-bottom: 16px;
-  display: flex; flex-direction: column; gap: 8px;
+  font-size: 2.6rem; font-weight: 600;
+  color: #f0e6d0; letter-spacing: .08em;
+  text-transform: uppercase; line-height: 1; margin-bottom: 10px;
 }
-.hero-title em {
-  font-style: italic; color: #b49150;
-  font-size: clamp(1.2rem, 4.5vw, 2.6rem);
-}
+.subtitle { color: #6a5c44; font-size: .77rem; font-weight: 300; letter-spacing: .04em; margin-bottom: 20px; }
 
-.hero-sub {
-  font-size: 26px; font-weight: 300;
-  color: #6a5c44; letter-spacing: .04em;
-  margin-bottom: 32px;
-}
+.divider { display: flex; align-items: center; justify-content: center; gap: 10px; color: #b49150; }
+.divider span:not(.diamond) { display: block; width: 60px; height: 1px; background: linear-gradient(90deg, transparent, #b49150); }
+.divider span:last-child    { background: linear-gradient(90deg, #b49150, transparent); }
+.diamond { font-size: .4rem; }
 
-.hero-actions {
-  display: flex; flex-direction: column;
-  align-items: stretch; gap: 12px;
-}
+/* ── Campos ── */
+.form { display: flex; flex-direction: column; gap: 22px; }
 
-/* ── BOTONES ── */
-.btn-main {
-  width: 100%;
-  /* Altura mínima de 56px — estándar táctil de apps móviles */
-  min-height: 80px;
-  padding: 0 20px;
-  font-family: 'Montserrat', sans-serif;
-  /* 16px mínimo iOS, usamos 17px para que se lea cómodo */
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: none;
-  transition: all .2s;
-  display: flex; align-items: center; justify-content: center;
-  gap: 10px;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.btn-main:active { transform: scale(.97); }
-
-.btn-gold { background: #b49150; color: #0d0d0d; }
-.btn-gold:hover { background: #c9a862; }
-.btn-gold:disabled { opacity: .6; cursor: not-allowed; }
-
-.btn-outline-gold {
-  background: transparent;
-  color: #b49150;
-  border: 2px solid rgba(180,145,80,.4) !important;
-}
-.btn-outline-gold:hover { border-color: #b49150 !important; }
-
-.btn-hero {
-  width: 128%; min-height: 85px;
-  padding: 0 20px;
-  background: #b49150; color: #0d0d0d;
-  border: none;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 17px; font-weight: 600;
-  letter-spacing: .1em; text-transform: uppercase;
-  cursor: pointer; transition: all .2s;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  display: flex; align-items: center; justify-content: center;
-}
-
-.btn-ghost {
-  width: 128%; min-height: 85px;
-  padding: 0 20px;
-  background: transparent; color: #8a7455;
-  border: 2px solid rgba(180,145,80,.22);
-  font-family: 'Montserrat', sans-serif;
-  font-size: 16px; font-weight: 400;
-  letter-spacing: .08em; text-transform: uppercase;
-  cursor: pointer; transition: all .2s;
-  -webkit-tap-highlight-color: transparent;
-  display: flex; align-items: center; justify-content: center;
-}
-.btn-ghost:hover { color: #b49150; border-color: rgba(180,145,80,.5); }
-
-/* ── SECCIÓN FORM — ancho completo en móvil ── */
-.section-form {
-  position: relative;
-  z-index: 1;
-
-  width: 100%;
-  max-width: 100%;   /* 🔥 evita que se encoja */
-  margin: 0;         /* 🔥 elimina centrado */
-  
-  padding: 48px 20px 60px;
-}
-
-.section-header { text-align: center; margin-bottom: 36px; }
-
-.section-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(3.5rem, 12vw, 5rem);
-  font-weight: 600; color: #f0e6d0;
-  letter-spacing: .06em; margin: 30px 0 34px;
-}
-
-.section-sub {
-  font-size: 22px; font-weight: 340;
-  color: #6a5c44; margin-bottom: 44px;
-}
-
-.divider {
-  display: flex; align-items: center;
-  justify-content: center; gap: 16px;
-}
-.divider span:not(.diamond) {
-  width: 80px; height: 10px;
-  background: linear-gradient(90deg, transparent, #b49150);
-}
-.divider span:last-child { background: linear-gradient(90deg, #b49150, transparent); }
-.diamond { font-size: .4rem; color: #b49150; }
-
-/* ── FORM ── */
-.form { display: flex; flex-direction: column; gap: 44px; }
-
-.field { display: flex; flex-direction: column; gap: 28px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
 
 .field label {
-  /* 14px mínimo legible sin zoom */
-  font-size: 24px;
-  letter-spacing: .15em;
-  text-transform: uppercase; color: #8a7455; font-weight: 540;
+  font-size: .63rem; letter-spacing: .2em;
+  text-transform: uppercase; color: #8a7455; font-weight: 500;
 }
 .req { color: #b49150; }
-.hint { font-size: 24px; color: #4a3f30; }
+.hint { font-size: .63rem; color: #4a3f30; letter-spacing: .03em; }
 
-/* ── INPUTS — 16px+ evita zoom automático en iOS ── */
 .field input,
 .field select,
 .field textarea {
-  background: #1a1a1a;
-  border: 1px solid rgba(180,145,80,.2);
+  background: #1c1c1c;
+  border: 1px solid #2a2218;
   color: #e8dcc8;
   font-family: 'Montserrat', sans-serif;
-  font-weight: 360;
-  /* 16px es el umbral exacto donde iOS deja de hacer zoom */
-  font-size: 22px;
-  /* Altura táctil generosa: mínimo 52px */
-  min-height: 90px;
-  padding: 20px 22px;
+  font-size: .85rem; font-weight: 300;
+  padding: 13px 14px;
   outline: none;
-  width: 100%;
-  -webkit-appearance: none;
-  border-radius: 0;
-  transition: border-color .2s, background .2s;
-  resize: none;
+  transition: border-color .25s, background .25s;
+  resize: vertical;
 }
-.field textarea { min-height: 90px; }
 .field input::placeholder,
 .field textarea::placeholder { color: #3a3028; }
 .field input:focus,
 .field select:focus,
-.field textarea:focus {
-  border-color: #b49150;
-  background: #181510;
-}
+.field textarea:focus { border-color: #b49150; background: #181510; }
 
 .field select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M1 1l7 7 7-7' stroke='%23b49150' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b49150' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-color: #1a1a1a;
-  padding-right: 64px; cursor: pointer;
+  background-position: right 14px center;
+  background-color: #1c1c1c;
+  padding-right: 38px;
+  cursor: pointer;
 }
-.field select option { background: #141414; color: #e8dcc8; }
+.field select option { background: #1c1c1c; color: #e8dcc8; }
 
-/* ── HORAS — 3 columnas, bien grandes para el dedo ── */
-.horas-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-}
-
-.hora-btn {
-  background: #1a1a1a;
-  border: 1px solid rgba(180,145,80,.2);
-  color: #6a5c44;
-  min-height: 74px;
-  padding: 0;
-  font-size: 24px;
-  cursor: pointer; transition: all .15s;
+/* ── Botón principal ── */
+.btn-primary {
+  width: 100%; padding: 15px;
+  background: transparent; border: 1px solid #b49150;
+  color: #b49150;
   font-family: 'Montserrat', sans-serif;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  border-radius: 0;
+  font-size: .7rem; font-weight: 600;
+  letter-spacing: .3em; text-transform: uppercase;
+  cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  transition: color .3s; margin-top: 4px;
 }
-.hora-btn:active { transform: scale(.94); }
-.hora-btn.active {
-  background: #b49150; color: #0d0d0d;
-  border-color: #b49150; font-weight: 640;
+.btn-primary::before {
+  content: ''; position: absolute; inset: 0;
+  background: #b49150;
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
 }
+.btn-primary:hover::before { transform: scaleX(1); }
+.btn-primary:hover { color: #0d0d0d; }
+.btn-primary span { position: relative; z-index: 1; }
 
-.error-msg {
-  color: #e05555; font-size: 22px;
-  text-align: center;
-}
-
-/* ── ÉXITO ── */
+/* ── Éxito ── */
 .success-panel {
   display: flex; flex-direction: column;
   align-items: center; text-align: center;
-  padding: 40px 0; gap: 24px;
+  padding: 20px 0 10px; gap: 12px;
 }
-.success-icon { font-size: 3rem; color: #b49150; animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-.success-panel h3 {
+.success-icon { font-size: 2.5rem; color: #b49150; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.success-panel h2 {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 2.6rem; font-weight: 640; color: #f0e6d0;
+  font-size: 2rem; font-weight: 600; color: #f0e6d0; letter-spacing: .06em;
 }
-.success-panel p { color: #7a6a50; font-size: 16px; font-weight: 340; }
+.success-panel p { color: #7a6a50; font-size: .82rem; font-weight: 300; }
 
-/* ── FOOTER ── */
-.footer {
-  text-align: center; padding: 48px 40px;
-  border-top: 1px solid rgba(180,145,80,.08);
-  position: relative; z-index: 1;
+.btn-outline {
+  padding: 11px 28px; background: transparent;
+  border: 1px solid #2e2820; color: #8a7455;
+  font-family: 'Montserrat', sans-serif;
+  font-size: .68rem; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase;
+  cursor: pointer; margin-top: 8px;
+  transition: border-color .2s, color .2s;
 }
-.footer-text { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #2e2820; }
+.btn-outline:hover { border-color: #b49150; color: #b49150; }
 
-/* ── PANTALLA COMPLETA ── */
-.fullscreen-modal {
-  position: fixed; inset: 0;
-  background: #0d0d0d;
-  z-index: 2080;
-  display: flex; align-items: center; justify-content: center;
-  padding: 60px 40px;
-  overflow-y: auto;
-}
-
-.fs-inner {
-  width: 90%;
-  max-width: 90%;   /* 🔥 ocupa toda la pantalla */
-  padding: 20px;     /* opcional para respirar */
-}
-
-@media (min-width: 660px) {
-  .fs-inner { max-width: 900px; } /* 🔥 más ancho en desktop */
-}
-
-
-.fs-close {
-  position: absolute; top: -4px; right: 0;
-  background: transparent; border: none;
-  color: #6a5c44; font-size: 1.6rem;
-  cursor: pointer; padding: 10px;
-  line-height: 1; transition: color .2s;
-  -webkit-tap-highlight-color: transparent;
-  min-height: 44px; min-width: 44px;
-  display: flex; align-items: center; justify-content: center;
-}
-.fs-close:hover { color: #b49150; }
-
-.fs-icon { font-size: 2.8rem; color: #b49150; margin-bottom: 16px; }
-
-.fs-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(3.5rem, 12vw, 5rem);
-  font-weight: 600; color: #f0e6d0;
-  letter-spacing: .04em; margin-bottom: 10px;
-}
-
-.fs-sub {
-  font-size: 16px; font-weight: 300;
-  color: #6a5c44;
-  margin-bottom: 32px;
-}
-
-.fs-actions {
-  width: 100%;
-  display: flex; flex-direction: column;
-  gap: 22px;
-}
-
-.fs-form {
-  width: 100%;
-  display: flex; flex-direction: column;
-  gap: 60px;
-}
-.fs-form .field { text-align: left; }
-
-/* ── TRANSICIÓN ── */
-.fade-enter-active, .fade-leave-active { transition: opacity .3s, transform .3s; }
+/* ── Transición ── */
+.fade-enter-active, .fade-leave-active { transition: opacity .35s, transform .35s; }
 .fade-enter-from { opacity: 0; transform: translateY(-8px); }
 .fade-leave-to   { opacity: 0; transform: translateY(8px); }
 
-/* ── DESKTOP ── */
-@media (min-width: 640px) {
-  .hero-actions { flex-direction: row; justify-content: center; }
-  .btn-hero, .btn-ghost { width: auto; min-width: 260px; }
-  .horas-grid { grid-template-columns: repeat(5, 1fr); }
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .card { padding: 36px 22px 32px; }
+  .card-header h1 { font-size: 2rem; }
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #141414;
+  border: 1px solid rgba(180,145,80,.3);
+  padding: 28px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.8);
+}
+
+.modal h3 {
+  font-family: 'Cormorant Garamond', serif;
+  color: #f0e6d0;
+  margin-bottom: 10px;
+}
+
+.modal p {
+  color: #8a7455;
+  margin-bottom: 20px;
+  font-size: .8rem;
+}
+
+.modal .field {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ── Horas ── */
+.horas-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.hora-btn {
+  background: #1c1c1c;
+  border: 1px solid #2a2218;
+  color: #e8dcc8;
+  padding: 12px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: all .25s;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.hora-btn:hover {
+  border-color: #b49150;
+  color: #b49150;
+}
+
+.hora-btn.active {
+  background: #b49150;
+  color: #0d0d0d;
+  border-color: #b49150;
+}
+
+/* ── Login link ── */
+.login-link {
+  text-align: center;
+  margin-top: 12px;
+  font-size: .75rem;
+}
+.login-link a {
+  color: #b49150;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color .25s;
+}
+.login-link a:hover {
+  color: #e8dcc8;
 }
 </style>

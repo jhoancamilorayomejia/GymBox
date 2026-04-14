@@ -2,35 +2,47 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+// DB es la instancia de la base de datos que se usará
+// en toda la aplicación
 var DB *sql.DB
 
 func ConnectDB() (*sql.DB, error) {
-	// ✅ Railway provee DATABASE_URL automáticamente
-	// En desarrollo puedes setearla en un archivo .env o directamente
-	dsn := os.Getenv("DATABASE_URL")
-
-	if dsn == "" {
-		// Fallback para desarrollo local
-		dsn = "host=localhost user=postgres password=tu_password dbname=barbershop sslmode=disable"
-		log.Println("⚠️  DATABASE_URL no encontrada, usando conexión local")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
 	}
 
-	var err error
-	DB, err = sql.Open("postgres", dsn)
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname,
+	)
+
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = DB.Ping(); err != nil {
+	err = db.Ping()
+	if err != nil {
 		return nil, err
 	}
 
-	log.Println("✅ Conectado a PostgreSQL")
+	fmt.Println("✅ Conexión exitosa a PostgreSQL")
+
+	DB = db
 	return DB, nil
 }

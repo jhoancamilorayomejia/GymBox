@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -11,25 +10,29 @@ import (
 	"github.com/jhoancamilorayomejia/barbershop/db"
 )
 
-// Middleware JWT
+// Middleware JWT (MEJORADO)
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
+		// ❌ No hay token
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token requerido"})
 			c.Abort()
 			return
 		}
 
+		// ❌ Formato incorrecto
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Formato inválido. Use Bearer <token>"})
 			c.Abort()
 			return
 		}
 
+		// ✅ Extraer token correctamente
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
+		// 🔎 Validar token
 		token, err := controllers.ValidateToken(tokenStr)
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido o expirado"})
@@ -47,16 +50,12 @@ func main() {
 		log.Fatal("❌ Error conectando a la DB:", err)
 	}
 
+	// Crear router
 	r := gin.Default()
 
-	// ✅ CORS — en producción usa tu dominio de Railway
-	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
-	if allowedOrigin == "" {
-		allowedOrigin = "*" // fallback para desarrollo local
-	}
-
+	// CORS (permite conexión con Vue)
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
@@ -67,31 +66,101 @@ func main() {
 		c.Next()
 	})
 
-	// ── Rutas API ──────────────────────────────────────────────────
-	r.POST("/api/login", controllers.Login)
+	// ✅ Ruta correcta
 	r.POST("/api/reservations", controllers.CreateReservation)
+
+	// ✅ Ruta de login
+	r.POST("/api/login", controllers.Login)
+
+	//ruta para admin
 	r.GET("/api/proyectos", AuthMiddleware(), controllers.GetReservation)
-	r.DELETE("/api/reservations/:id", AuthMiddleware(), controllers.DeleteReservation)
-	r.PUT("/api/users/change-password", AuthMiddleware(), controllers.ChangePassword)
 
-	// ── Servir frontend Vue (dist/) ────────────────────────────────
-	r.Static("/assets", "./dist/assets")
-	r.StaticFile("/favicon.ico", "./dist/favicon.ico")
+	log.Println("🚀 Servidor corriendo en http://localhost:8080")
 
-	// Todo lo que no sea una ruta real del backend → index.html (Vue Router)
-	r.NoRoute(func(c *gin.Context) {
-		c.File("./dist/index.html")
-	})
-
-	// ✅ Puerto dinámico — Railway asigna el puerto via variable PORT
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // fallback para desarrollo local
-	}
-
-	log.Println("🚀 Servidor corriendo en puerto", port)
-
-	if err := r.Run(":" + port); err != nil {
+	// Levantar servidor
+	if err := r.Run(":8080"); err != nil {
 		log.Fatal("❌ Error iniciando servidor:", err)
 	}
 }
+
+/*package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"supplier-jwt/controllers"
+	"supplier-jwt/db"
+
+	"github.com/gin-gonic/gin"
+)
+
+// Middleware JWT
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token requerido"})
+			c.Abort()
+			return
+		}
+
+		var tokenStr string
+		_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenStr)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Formato inválido. Use Bearer <token>"})
+			c.Abort()
+			return
+		}
+
+		token, err := controllers.ValidateToken(tokenStr)
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido o expirado"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func main() {
+	database, err := db.ConnectDB()
+	if err != nil {
+		log.Fatal("No se pudo conectar a la base de datos:", err)
+	}
+	defer database.Close()
+
+	r := gin.Default()
+
+	// CORS CORRECTO
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(200)
+			return
+		}
+		c.Next()
+	})
+
+	// Endpoint publico
+	r.POST("/api/login", controllers.Login)
+
+	// Endpoints protegidos
+	r.GET("/api/suppliers", AuthMiddleware(), controllers.GetSuppliers)
+	r.POST("/api/suppliers", AuthMiddleware(), controllers.CreateSupplier)
+	r.PUT("/api/suppliers/:id", AuthMiddleware(), controllers.UpdateSupplier)
+	r.DELETE("/api/suppliers/:id", AuthMiddleware(), controllers.DeleteSupplier)
+
+	//para proyectos
+	r.GET("/api/proyectos", AuthMiddleware(), controllers.GetSuppliers2)
+
+	log.Println("Servidor corriendo en http://localhost:8080")
+	r.Run(":8080")
+}
+*/

@@ -1,62 +1,38 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { jsPDF } from 'jspdf'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const nombre   = ref('')
-const whatsapp = ref('')
-const fecha    = ref('')
-const hora     = ref('')
-const notas    = ref('')
-const enviado  = ref(false)
-const mostrarModal = ref(false)
-const errorMsg = ref('')
-const loading  = ref(false)
-
-const mostrarLogin = ref(false)
-
-// Login
 const loginEmail    = ref('')
 const loginPassword = ref('')
 const loginError    = ref('')
 const loginLoading  = ref(false)
+const showPassword  = ref(false)
 
 const loginAdmin = async () => {
   loginLoading.value = true
-  loginError.value = ''
+  loginError.value   = ''
 
   try {
-    const payload = {
-      username: loginEmail.value,
-      password: loginPassword.value
-    }
-
-    // ✅ Ruta relativa — funciona en desarrollo y producción
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        username: loginEmail.value,
+        password: loginPassword.value
+      })
     })
 
     const data = await res.json()
 
-    if (!res.ok) {
-      throw new Error(data.error || 'Usuario o contraseña incorrectos')
-    }
+    if (!res.ok) throw new Error(data.error || 'Usuario o contraseña incorrectos')
 
-    // ✅ Guardar sesión
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('rol', data.rol)
+    localStorage.setItem('token',    data.token)
+    localStorage.setItem('rol',      data.rol)
     localStorage.setItem('username', data.user)
 
-    mostrarLogin.value = false
-
-    // ✅ Redirección por rol
-    if (data.rol === 'admin') {
-      router.push('/api/proyectos')
-    } else if (data.rol === 'proveedor') {
+    if (data.rol === 'admin' || data.rol === 'proveedor') {
       router.push('/api/proyectos')
     } else {
       router.push('/api/login')
@@ -68,582 +44,530 @@ const loginAdmin = async () => {
     loginLoading.value = false
   }
 }
-
-// ✅ Validación
-const formValido = computed(() => {
-  return nombre.value && whatsapp.value.length === 12 && fecha.value && hora.value
-})
-
-// ✅ Formatear WhatsApp y limitar a 10 dígitos
-const formatearWhatsApp = (value) => {
-  const numeros = value.replace(/\D/g, '').slice(0, 10)
-  const partes = []
-  if (numeros.length > 0) partes.push(numeros.slice(0, 3))
-  if (numeros.length >= 4) partes.push(numeros.slice(3, 6))
-  if (numeros.length >= 7) partes.push(numeros.slice(6, 10))
-  return partes.join(' ')
-}
-
-watch(whatsapp, (newVal) => {
-  const formateado = formatearWhatsApp(newVal)
-  if (formateado !== newVal) {
-    whatsapp.value = formateado
-  }
-})
-
-// ✅ Fechas disponibles (próximos 30 días excepto domingos)
-const fechasDisponibles = computed(() => {
-  const dias = []
-  const cursor = new Date()
-  cursor.setHours(0, 0, 0, 0)
-
-  while (dias.length < 30) {
-    cursor.setDate(cursor.getDate() + 1)
-    if (cursor.getDay() !== 0) dias.push(new Date(cursor))
-  }
-
-  return dias
-})
-
-const formatearFecha = (d) =>
-  d.toLocaleDateString('es-AR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  }).replace(/^\w/, c => c.toUpperCase())
-
-// ✅ Horas disponibles
-const horasDisponibles = computed(() => {
-  const horas = []
-  for (let h = 6; h <= 20; h++) {
-    for (let m of [0, 30]) {
-      if (h === 20 && m === 30) continue
-      const hh = String(h).padStart(2, '0')
-      const mm = String(m).padStart(2, '0')
-      horas.push(`${hh}:${mm}`)
-    }
-  }
-  return horas
-})
-
-// Reset hora si cambia fecha
-watch(fecha, () => {
-  hora.value = ''
-})
-
-// ✅ PDF
-const generarPDF = () => {
-  const doc = new jsPDF()
-
-  const fechaFormateada = new Date(`${fecha.value}T${hora.value}`)
-    .toLocaleString('es-AR')
-
-  doc.setFont("Helvetica", "bold")
-  doc.setFontSize(16)
-  doc.text("Confirmación de Reserva", 20, 20)
-
-  doc.setFontSize(12)
-  doc.setFont("Helvetica", "normal")
-
-  doc.text(`Nombre: ${nombre.value}`, 20, 40)
-  doc.text(`Teléfono: ${whatsapp.value}`, 20, 50)
-  doc.text(`Fecha y hora: ${fechaFormateada}`, 20, 60)
-
-  if (notas.value) {
-    doc.text(`Notas: ${notas.value}`, 20, 70)
-  }
-
-  doc.text("Gracias por tu reserva 🙌", 20, 90)
-
-  doc.save(`reserva-${nombre.value}.pdf`)
-}
-
-// ✅ Abrir modal
-const enviar = () => {
-  if (!formValido.value) {
-    errorMsg.value = 'Completa todos los campos'
-    return
-  }
-  errorMsg.value = ''
-  mostrarModal.value = true
-}
-
-// ✅ Confirmar reserva
-const confirmarReserva = async () => {
-  loading.value = true
-  errorMsg.value = ''
-
-  try {
-    const payload = {
-      name: nombre.value,
-      phone: whatsapp.value,
-      reservation_date: `${fecha.value} ${hora.value}`,
-      note: notas.value
-    }
-
-    const token = localStorage.getItem('token')
-
-    const res = await fetch('/api/reservations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    })
-
-    if (res.status === 401) {
-      localStorage.removeItem('token')
-      router.push('/api/login')
-      return
-    }
-
-    const text = await res.text()
-
-    let data
-    try {
-      data = JSON.parse(text)
-    } catch {
-      throw new Error("Respuesta inválida del servidor: " + text)
-    }
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Error desconocido')
-    }
-
-    generarPDF()
-
-    mostrarModal.value = false
-    enviado.value = true
-
-    setTimeout(() => {
-      router.push('/api/proyectos')
-    }, 2000)
-
-  } catch (error) {
-    errorMsg.value = error.message
-  } finally {
-    loading.value = false
-  }
-}
-
-// ✅ Reset
-const nuevaReserva = () => {
-  nombre.value = ''
-  whatsapp.value = ''
-  fecha.value = ''
-  hora.value = ''
-  notas.value = ''
-  enviado.value = false
-  errorMsg.value = ''
-}
 </script>
 
 <template>
   <div class="screen">
-    <div class="bg-grid"></div>
-    <div class="glow left"></div>
-    <div class="glow right"></div>
+    <!-- Fondo geométrico animado -->
+    <div class="bg-layer">
+      <div class="hex hex-1"></div>
+      <div class="hex hex-2"></div>
+      <div class="hex hex-3"></div>
+      <div class="slash slash-1"></div>
+      <div class="slash slash-2"></div>
+      <div class="slash slash-3"></div>
+      <div class="noise"></div>
+    </div>
 
-    <div class="card">
-      <header class="card-header">
-        <span class="eyebrow">Reservá online</span>
-        <h1>Agendar Turno</h1>
-        <p class="subtitle">Completá el formulario y confirmamos tu turno al instante.</p>
-        <div class="divider"><span></span><span class="diamond">◆</span><span></span></div>
-      </header>
-
-      <transition name="fade" mode="out-in">
-
-        <!-- ── ÉXITO ── -->
-        <div v-if="enviado" class="success-panel" key="ok">
-          <div class="success-icon">✦</div>
-          <h2>¡Turno solicitado!</h2>
-          <p>Te contactaremos por WhatsApp para confirmar tu reserva.</p>
-          <button class="btn-outline" @click="nuevaReserva">Hacer otra reserva</button>
+    <!-- Panel izquierdo — branding -->
+    <aside class="brand-panel">
+      <div class="brand-inner">
+        <!-- Logo SVG recreado desde la imagen -->
+        <div class="logo-wrap">
+          <svg class="logo-svg" viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
+            <!-- Rayo -->
+            <polygon points="88,8 68,54 82,54 62,102 108,46 90,46 115,8" fill="#f5c500"/>
+            <!-- RAYO -->
+            <text x="110" y="50" font-family="'Barlow Condensed', sans-serif" font-weight="900"
+                  font-size="44" fill="#f5c500" letter-spacing="-1">RAYO</text>
+            <!-- BOX -->
+            <text x="110" y="90" font-family="'Barlow Condensed', sans-serif" font-weight="900"
+                  font-size="44" fill="#ffffff" letter-spacing="-1">BOX</text>
+            <!-- CROSS LIFTING -->
+            <text x="110" y="104" font-family="'Barlow Condensed', sans-serif" font-weight="400"
+                  font-size="11" fill="#888" letter-spacing="4">CROSS LIFTING</text>
+          </svg>
         </div>
 
-        <!-- ── FORMULARIO ── -->
-        <form v-else key="form" class="form" @submit.prevent="enviar">
+        <div class="brand-tagline">
+          <span class="tag-line">SISTEMA DE GESTIÓN</span>
+          <h2>Entrená.<br/>Gestioná.<br/>Dominá.</h2>
+        </div>
 
-          <div class="field">
-            <label>Escriba tu nombre completo<span class="req">*</span></label>
-            <input v-model="nombre" type="text" required placeholder="Ej: Jhoan Camilo..." />
+        <div class="stats-row">
+          <div class="stat">
+            <span class="stat-num">100%</span>
+            <span class="stat-label">Digital</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-num">24/7</span>
+            <span class="stat-label">Acceso</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-num">∞</span>
+            <span class="stat-label">Poder</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Panel derecho — login -->
+    <main class="login-panel">
+      <div class="login-card">
+        <!-- Esquinas decorativas -->
+        <span class="corner tl"></span>
+        <span class="corner br"></span>
+
+        <div class="login-header">
+          <div class="bolt-icon">⚡</div>
+          <h1>Acceso al Sistema</h1>
+          <p>Ingresá tus credenciales para continuar</p>
+        </div>
+
+        <form class="login-form" @submit.prevent="loginAdmin">
+
+          <div class="field" :class="{ filled: loginEmail }">
+            <label>Usuario</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <input
+                v-model="loginEmail"
+                type="text"
+                placeholder="Tu usuario"
+                autocomplete="username"
+                required
+              />
+            </div>
           </div>
 
-          <div class="field">
-            <label>WhatsApp <span class="req">*</span></label>
-            <input
-              v-model="whatsapp"
-              type="tel"
-              required
-              placeholder="323 517 9341"
-              maxlength="12"
-            />
-            <span class="hint">Para confirmar o consultar tu turno</span>
-          </div>
-
-          <div class="field">
-            <label>Fecha <span class="req">*</span></label>
-            <select v-model="fecha" required>
-              <option value="" disabled>Seleccioná una fecha</option>
-              <option
-                v-for="d in fechasDisponibles"
-                :key="d.toISOString()"
-                :value="d.toISOString().split('T')[0]"
-              >
-                {{ formatearFecha(d) }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Solo aparece si hay fecha -->
-          <div v-if="fecha" class="field">
-            <label>Horario <span class="req">*</span></label>
-            <div class="horas-grid">
+          <div class="field" :class="{ filled: loginPassword }">
+            <label>Contraseña</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <input
+                v-model="loginPassword"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                required
+              />
               <button
-                v-for="h in horasDisponibles"
-                :key="h"
                 type="button"
-                class="hora-btn"
-                :class="{ active: hora === h }"
-                @click="hora = h"
+                class="eye-btn"
+                @click="showPassword = !showPassword"
+                :title="showPassword ? 'Ocultar' : 'Mostrar'"
               >
-                {{ h }}
+                <svg v-if="!showPassword" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
+                  <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                </svg>
+                <svg v-else viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
               </button>
             </div>
           </div>
 
-          <div class="field">
-            <label>Notas adicionales</label>
-            <textarea v-model="notas" rows="3" placeholder="Alguna preferencia o consulta especial..."></textarea>
-          </div>
+          <transition name="shake">
+            <div v-if="loginError" class="error-box">
+              <span>⚡</span> {{ loginError }}
+            </div>
+          </transition>
 
-          <button type="submit" class="btn-primary">
-            <span>Confirmar Turno</span>
+          <button class="btn-login" type="submit" :disabled="loginLoading">
+            <span class="btn-bg"></span>
+            <span class="btn-label">
+              <svg v-if="loginLoading" class="spinner" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+              </svg>
+              {{ loginLoading ? 'Ingresando...' : 'INGRESAR' }}
+            </span>
           </button>
-
-          <!-- Enlace para iniciar sesión -->
-          <div class="login-link">
-            <a href="#" @click.prevent="mostrarLogin = true">¿Eres Administrador? Iniciar sesión</a>
-          </div>
 
         </form>
-      </transition>
-    </div>
 
-    <!-- Modal confirmación reserva -->
-    <div v-if="mostrarModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Confirmar reserva</h3>
-        <p>¿Deseas confirmar tu turno?</p>
-        <div class="modal-actions">
-          <button class="btn-outline" @click="mostrarModal = false">Cancelar</button>
-          <button class="btn-primary" @click="confirmarReserva" :disabled="loading">
-            <span>{{ loading ? 'Guardando...' : 'Confirmar' }}</span>
-          </button>
-        </div>
-        <p v-if="errorMsg" style="color:#c0392b; font-size:.75rem; text-align:center;">
-          {{ errorMsg }}
+        <p class="footer-note">
+          Rayo Box · Sistema de Gestión v1.0
         </p>
       </div>
-    </div>
-
-    <!-- Modal de Login -->
-    <div v-if="mostrarLogin" class="modal-overlay">
-      <div class="modal">
-        <h3>Iniciar sesión</h3>
-        <div class="field">
-          <label>Usuario</label>
-          <input type="text" v-model="loginEmail" placeholder="Tu usuario" />
-        </div>
-        <div class="field">
-          <label>Contraseña</label>
-          <input type="password" v-model="loginPassword" placeholder="********" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn-outline" @click="mostrarLogin = false">Cancelar</button>
-          <button class="btn-primary" @click="loginAdmin" :disabled="loginLoading">
-            <span>{{ loginLoading ? 'Ingresando...' : 'Ingresar' }}</span>
-          </button>
-        </div>
-        <p v-if="loginError" style="color:#c0392b; font-size:.75rem; text-align:center;">
-          {{ loginError }}
-        </p>
-      </div>
-    </div>
-
+    </main>
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Layout ── */
 .screen {
   min-height: 100vh;
-  background: #0d0d0d;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 16px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Barlow', sans-serif;
+  background: #0a0a0a;
   position: relative;
   overflow: hidden;
 }
 
-.bg-grid {
-  position: fixed; inset: 0;
-  background-image:
-    linear-gradient(rgba(180,145,80,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180,145,80,.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  pointer-events: none;
+/* ── Fondo geométrico ── */
+.bg-layer { position: fixed; inset: 0; pointer-events: none; }
+
+.hex, .slash { position: absolute; }
+
+.hex-1 {
+  width: 380px; height: 380px;
+  background: conic-gradient(from 30deg, #f5c500 0deg, #ff7a00 80deg, transparent 80deg);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  top: -120px; left: -100px; opacity: .12;
+  animation: rotateSlow 30s linear infinite;
+}
+.hex-2 {
+  width: 280px; height: 280px;
+  background: conic-gradient(from 200deg, #ff7a00 0deg, #f5c500 90deg, transparent 90deg);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  bottom: -80px; right: 38%; opacity: .10;
+  animation: rotateSlow 22s linear infinite reverse;
+}
+.hex-3 {
+  width: 180px; height: 180px;
+  background: #f5c500;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  top: 40%; right: 8%; opacity: .06;
+  animation: rotateSlow 18s linear infinite;
 }
 
-.glow {
-  position: fixed;
-  width: 500px; height: 500px;
-  border-radius: 50%;
-  filter: blur(120px);
-  pointer-events: none;
-  opacity: .3;
+.slash-1 {
+  width: 3px; height: 60vh;
+  background: linear-gradient(to bottom, transparent, #f5c500 50%, transparent);
+  top: 20%; left: 37.5%; opacity: .18;
+  transform: rotate(15deg);
 }
-.glow.left  { background: radial-gradient(circle, #b4915025, transparent 70%); top: -100px; left: -150px; }
-.glow.right { background: radial-gradient(circle, #b4915015, transparent 70%); bottom: -100px; right: -150px; }
-
-/* ── Tarjeta ── */
-.card {
-  position: relative;
-  width: 100%; max-width: 520px;
-  background: #141414;
-  border: 1px solid rgba(180,145,80,.2);
-  box-shadow: 0 32px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(180,145,80,.08);
-  padding: 48px 44px 44px;
-  animation: cardIn .65s cubic-bezier(.16,1,.3,1) both;
+.slash-2 {
+  width: 2px; height: 40vh;
+  background: linear-gradient(to bottom, transparent, #ff7a00 50%, transparent);
+  top: 10%; left: 39%; opacity: .12;
+  transform: rotate(15deg);
 }
-.card::before, .card::after {
-  content: ''; position: absolute;
-  width: 20px; height: 20px;
-  border-color: #b49150; border-style: solid;
-}
-.card::before { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
-.card::after  { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
-
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0); }
+.slash-3 {
+  width: 2px; height: 30vh;
+  background: linear-gradient(to bottom, transparent, #f5c500 50%, transparent);
+  bottom: 5%; left: 35%; opacity: .10;
+  transform: rotate(15deg);
 }
 
-/* ── Header ── */
-.card-header { text-align: center; margin-bottom: 36px; }
-
-.eyebrow {
-  display: block;
-  font-size: .63rem; letter-spacing: .3em;
-  text-transform: uppercase; color: #b49150; margin-bottom: 10px;
-}
-.card-header h1 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 2.6rem; font-weight: 600;
-  color: #f0e6d0; letter-spacing: .08em;
-  text-transform: uppercase; line-height: 1; margin-bottom: 10px;
-}
-.subtitle { color: #6a5c44; font-size: .77rem; font-weight: 300; letter-spacing: .04em; margin-bottom: 20px; }
-
-.divider { display: flex; align-items: center; justify-content: center; gap: 10px; color: #b49150; }
-.divider span:not(.diamond) { display: block; width: 60px; height: 1px; background: linear-gradient(90deg, transparent, #b49150); }
-.divider span:last-child    { background: linear-gradient(90deg, #b49150, transparent); }
-.diamond { font-size: .4rem; }
-
-/* ── Campos ── */
-.form { display: flex; flex-direction: column; gap: 22px; }
-
-.field { display: flex; flex-direction: column; gap: 8px; }
-
-.field label {
-  font-size: .63rem; letter-spacing: .2em;
-  text-transform: uppercase; color: #8a7455; font-weight: 500;
-}
-.req { color: #b49150; }
-.hint { font-size: .63rem; color: #4a3f30; letter-spacing: .03em; }
-
-.field input,
-.field select,
-.field textarea {
-  background: #1c1c1c;
-  border: 1px solid #2a2218;
-  color: #e8dcc8;
-  font-family: 'Montserrat', sans-serif;
-  font-size: .85rem; font-weight: 300;
-  padding: 13px 14px;
-  outline: none;
-  transition: border-color .25s, background .25s;
-  resize: vertical;
-}
-.field input::placeholder,
-.field textarea::placeholder { color: #3a3028; }
-.field input:focus,
-.field select:focus,
-.field textarea:focus { border-color: #b49150; background: #181510; }
-
-.field select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b49150' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-color: #1c1c1c;
-  padding-right: 38px;
-  cursor: pointer;
-}
-.field select option { background: #1c1c1c; color: #e8dcc8; }
-
-/* ── Botón principal ── */
-.btn-primary {
-  width: 100%; padding: 15px;
-  background: transparent; border: 1px solid #b49150;
-  color: #b49150;
-  font-family: 'Montserrat', sans-serif;
-  font-size: .7rem; font-weight: 600;
-  letter-spacing: .3em; text-transform: uppercase;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  position: relative; overflow: hidden;
-  transition: color .3s; margin-top: 4px;
-}
-.btn-primary::before {
-  content: ''; position: absolute; inset: 0;
-  background: #b49150;
-  transform: scaleX(0); transform-origin: left;
-  transition: transform .35s cubic-bezier(.4,0,.2,1);
-}
-.btn-primary:hover::before { transform: scaleX(1); }
-.btn-primary:hover { color: #0d0d0d; }
-.btn-primary span { position: relative; z-index: 1; }
-
-/* ── Éxito ── */
-.success-panel {
-  display: flex; flex-direction: column;
-  align-items: center; text-align: center;
-  padding: 20px 0 10px; gap: 12px;
-}
-.success-icon { font-size: 2.5rem; color: #b49150; animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-.success-panel h2 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 2rem; font-weight: 600; color: #f0e6d0; letter-spacing: .06em;
-}
-.success-panel p { color: #7a6a50; font-size: .82rem; font-weight: 300; }
-
-.btn-outline {
-  padding: 11px 28px; background: transparent;
-  border: 1px solid #2e2820; color: #8a7455;
-  font-family: 'Montserrat', sans-serif;
-  font-size: .68rem; font-weight: 500;
-  letter-spacing: .2em; text-transform: uppercase;
-  cursor: pointer; margin-top: 8px;
-  transition: border-color .2s, color .2s;
-}
-.btn-outline:hover { border-color: #b49150; color: #b49150; }
-
-/* ── Transición ── */
-.fade-enter-active, .fade-leave-active { transition: opacity .35s, transform .35s; }
-.fade-enter-from { opacity: 0; transform: translateY(-8px); }
-.fade-leave-to   { opacity: 0; transform: translateY(8px); }
-
-/* ── Responsive ── */
-@media (max-width: 560px) {
-  .card { padding: 36px 22px 32px; }
-  .card-header h1 { font-size: 2rem; }
+.noise {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: .025;
 }
 
-/* ── Modal ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.75);
+@keyframes rotateSlow { to { transform: rotate(360deg); } }
+
+/* ── Brand Panel ── */
+.brand-panel {
+  width: 42%;
+  min-height: 100vh;
+  background: linear-gradient(145deg, #111 0%, #0a0a0a 60%);
+  border-right: 1px solid rgba(245,197,0,.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  padding: 60px 48px;
+  position: relative;
 }
 
-.modal {
-  background: #141414;
-  border: 1px solid rgba(180,145,80,.3);
-  padding: 28px;
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,.8);
+.brand-panel::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -1px;
+  width: 1px; height: 100%;
+  background: linear-gradient(to bottom, transparent, #f5c500 40%, #ff7a00 60%, transparent);
 }
 
-.modal h3 {
-  font-family: 'Cormorant Garamond', serif;
-  color: #f0e6d0;
+.brand-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  max-width: 340px;
+}
+
+.logo-wrap {
+  animation: logoIn .8s cubic-bezier(.16,1,.3,1) both;
+}
+
+.logo-svg {
+  width: 240px;
+  height: auto;
+  filter: drop-shadow(0 0 28px rgba(245,197,0,.25));
+}
+
+@keyframes logoIn {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.brand-tagline {
+  animation: logoIn .8s .15s cubic-bezier(.16,1,.3,1) both;
+}
+
+.tag-line {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .65rem; letter-spacing: .35em;
+  text-transform: uppercase; color: #f5c500;
   margin-bottom: 10px;
 }
 
-.modal p {
-  color: #8a7455;
-  margin-bottom: 20px;
-  font-size: .8rem;
+.brand-tagline h2 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.4rem; font-weight: 900;
+  line-height: 1; letter-spacing: -.01em;
+  color: #fff;
+  text-transform: uppercase;
 }
 
-.modal .field {
-  text-align: left;
-  margin-bottom: 14px;
-}
-
-.modal-actions {
+.stats-row {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 20px;
+  animation: logoIn .8s .3s cubic-bezier(.16,1,.3,1) both;
+}
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.7rem; font-weight: 900;
+  color: #f5c500; line-height: 1;
+}
+.stat-label {
+  font-size: .65rem; letter-spacing: .15em;
+  text-transform: uppercase; color: #555;
+}
+.stat-divider {
+  width: 1px; height: 36px;
+  background: linear-gradient(to bottom, transparent, #333, transparent);
+}
+
+/* ── Login Panel ── */
+.login-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  padding: 48px 24px;
 }
 
-/* ── Horas ── */
-.horas-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+.login-card {
+  position: relative;
+  width: 100%; max-width: 420px;
+  background: #111;
+  border: 1px solid rgba(245,197,0,.12);
+  box-shadow: 0 40px 100px rgba(0,0,0,.8), 0 0 60px rgba(245,197,0,.04);
+  padding: 48px 44px 40px;
+  animation: cardIn .7s .1s cubic-bezier(.16,1,.3,1) both;
 }
 
-.hora-btn {
-  background: #1c1c1c;
-  border: 1px solid #2a2218;
-  color: #e8dcc8;
-  padding: 12px;
-  font-size: .8rem;
-  cursor: pointer;
-  transition: all .25s;
-  font-family: 'Montserrat', sans-serif;
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.hora-btn:hover {
-  border-color: #b49150;
-  color: #b49150;
+/* Esquinas decorativas */
+.corner {
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: #f5c500; border-style: solid;
 }
+.corner.tl { top: 10px; left: 10px; border-width: 1.5px 0 0 1.5px; }
+.corner.br { bottom: 10px; right: 10px; border-width: 0 1.5px 1.5px 0; }
 
-.hora-btn.active {
-  background: #b49150;
-  color: #0d0d0d;
-  border-color: #b49150;
-}
-
-/* ── Login link ── */
-.login-link {
+/* ── Header login ── */
+.login-header {
   text-align: center;
-  margin-top: 12px;
-  font-size: .75rem;
+  margin-bottom: 36px;
 }
-.login-link a {
-  color: #b49150;
-  text-decoration: underline;
+
+.bolt-icon {
+  font-size: 2rem; margin-bottom: 10px;
+  filter: drop-shadow(0 0 12px #f5c500);
+  display: block;
+  animation: boltPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes boltPulse {
+  0%,100% { filter: drop-shadow(0 0 8px #f5c500); }
+  50%      { filter: drop-shadow(0 0 22px #f5c500) drop-shadow(0 0 40px rgba(245,197,0,.4)); }
+}
+
+.login-header h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8rem; font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #fff; margin-bottom: 6px;
+}
+
+.login-header p {
+  font-size: .77rem; color: #555;
+  letter-spacing: .05em;
+}
+
+/* ── Formulario ── */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.field label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .65rem; letter-spacing: .3em;
+  text-transform: uppercase;
+  color: #666; font-weight: 700;
+  transition: color .2s;
+}
+
+.field.filled label,
+.field:focus-within label {
+  color: #f5c500;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 13px;
+  width: 16px; height: 16px;
+  color: #444;
+  pointer-events: none;
+  transition: color .2s;
+}
+
+.field:focus-within .input-icon { color: #f5c500; }
+
+.input-wrap input {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  color: #f0f0f0;
+  font-family: 'Barlow', sans-serif;
+  font-size: .9rem; font-weight: 400;
+  padding: 13px 14px 13px 40px;
+  outline: none;
+  transition: border-color .25s, background .25s, box-shadow .25s;
+}
+
+.input-wrap input::placeholder { color: #333; }
+
+.input-wrap input:focus {
+  border-color: #f5c500;
+  background: #0f0e09;
+  box-shadow: 0 0 0 3px rgba(245,197,0,.07), inset 0 1px 0 rgba(245,197,0,.06);
+}
+
+.eye-btn {
+  position: absolute; right: 12px;
+  background: none; border: none; cursor: pointer;
+  width: 20px; height: 20px;
+  color: #444; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .2s;
+}
+.eye-btn:hover { color: #f5c500; }
+.eye-btn svg { width: 16px; height: 16px; }
+
+/* ── Error ── */
+.error-box {
+  background: rgba(220, 50, 30, .08);
+  border: 1px solid rgba(220, 50, 30, .3);
+  color: #e05a45;
+  font-size: .78rem;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  letter-spacing: .03em;
+}
+
+.shake-enter-active { animation: shake .4s cubic-bezier(.36,.07,.19,.97); }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+/* ── Botón login ── */
+.btn-login {
+  position: relative;
+  width: 100%;
+  padding: 15px;
+  background: transparent;
+  border: 1.5px solid #f5c500;
+  color: #f5c500;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .95rem; font-weight: 900;
+  letter-spacing: .35em; text-transform: uppercase;
   cursor: pointer;
-  transition: color .25s;
+  overflow: hidden;
+  margin-top: 4px;
+  transition: color .3s;
+  display: flex; align-items: center; justify-content: center;
 }
-.login-link a:hover {
-  color: #e8dcc8;
+
+.btn-bg {
+  position: absolute; inset: 0;
+  background: #f5c500;
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .4s cubic-bezier(.4,0,.2,1);
+}
+
+.btn-login:hover .btn-bg,
+.btn-login:focus .btn-bg { transform: scaleX(1); }
+.btn-login:hover,
+.btn-login:focus { color: #0a0a0a; outline: none; }
+.btn-login:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-label {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.spinner {
+  width: 16px; height: 16px;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer ── */
+.footer-note {
+  text-align: center;
+  font-size: .65rem;
+  color: #2e2e2e;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-top: 28px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 820px) {
+  .screen { flex-direction: column; }
+  .brand-panel {
+    width: 100%; min-height: auto;
+    padding: 48px 32px 36px;
+    border-right: none;
+    border-bottom: 1px solid rgba(245,197,0,.15);
+  }
+  .brand-inner { align-items: center; text-align: center; gap: 28px; }
+  .brand-panel::after { display: none; }
+  .stats-row { justify-content: center; }
+  .brand-tagline h2 { font-size: 2.6rem; }
+  .login-card { padding: 36px 26px 30px; }
 }
 </style>

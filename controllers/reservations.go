@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jhoancamilorayomejia/barbershop/db"
+	"github.com/jhoancamilorayomejia/GymBox/db"
 )
 
 type Reservation struct {

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jhoancamilorayomejia/barbershop/controllers"
-	"github.com/jhoancamilorayomejia/barbershop/db"
+	"github.com/jhoancamilorayomejia/GymBox/controllers"
+	"github.com/jhoancamilorayomejia/GymBox/db"
 )
 
 // Middleware JWT (MEJORADO)

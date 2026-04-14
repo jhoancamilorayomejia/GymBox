@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jhoancamilorayomejia/barbershop/db"
+	"github.com/jhoancamilorayomejia/GymBox/db"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

@@ -32,11 +32,13 @@ const loginAdmin = async () => {
     localStorage.setItem('rol',      data.rol)
     localStorage.setItem('username', data.user)
 
-    if (data.rol === 'admin' || data.rol === 'proveedor') {
-      router.push('/api/proyectos')
-    } else {
-      router.push('/api/login')
-    }
+    if (data.rol === 'admin') {
+  router.push('/dashboard')
+} else if (data.rol === 'customer') {
+  router.push('/proyectos')
+} else {
+  router.push('/login')
+}
 
   } catch (err) {
     loginError.value = err.message

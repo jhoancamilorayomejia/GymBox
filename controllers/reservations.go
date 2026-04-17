@@ -62,8 +62,8 @@ func CreateReservation(c *gin.Context) {
 	// ✅ Insertar
 	err = db.DB.QueryRow(
 		`INSERT INTO reservations (name, phone, reservation_date, note)
-		 VALUES ($1,$2,$3,$4)
-		 RETURNING id`,
+		VALUES ($1,$2,$3,$4)
+		RETURNING id`,
 		reservation.Name,
 		reservation.Phone,
 		reservation.ReservationDate,

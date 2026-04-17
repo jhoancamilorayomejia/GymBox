@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jhoancamilorayomejia/GymBox/db"
+	"github.com/jhoancamilorayomejia/GymBox/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -24,15 +25,6 @@ type LoginRequest struct {
 }
 
 // =========================
-// 👤 MODELO USER
-// =========================
-type User struct {
-	Username string
-	Password string // HASH (bcrypt)
-	Rol      string
-}
-
-// =========================
 // 🔐 LOGIN
 // =========================
 func Login(c *gin.Context) {
@@ -45,7 +37,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Buscar usuario en DB
-	var user User
+	var user models.User
 	err := db.DB.QueryRow(
 		`SELECT username, password, rol FROM users WHERE username=$1`,
 		req.Username,

@@ -72,7 +72,10 @@ const obtenerPlanes = async () => {
     if (res.status === 401) { localStorage.removeItem('token'); router.push('/login'); return }
     if (!res.ok) throw new Error('Error al cargar planes')
     const data = await res.json()
-    planes.value = data.filter(p => p.idcustomer === idcustomer)
+
+const arr = Array.isArray(data) ? data : (data?.data ?? [])
+
+planes.value = arr.filter(p => Number(p.idcustomer) === Number(idcustomer))
   } catch (err) {
     errorMsg.value = err.message
   } finally {

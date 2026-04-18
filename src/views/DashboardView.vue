@@ -25,6 +25,7 @@ const cerrarSesion = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('rol')
   localStorage.removeItem('username')
+  localStorage.removeItem('id')
   router.push('/login')
 }
 
@@ -110,6 +111,8 @@ const rolColor = (rol) => {
 
 const maskPassword = (pw) => '•'.repeat(Math.min(pw?.length || 8, 12))
 const username = localStorage.getItem('username') || 'Admin'
+const id       = localStorage.getItem('id') || ''
+
 
 onMounted(() => { obtenerUsuarios() })
 </script>
@@ -171,7 +174,7 @@ onMounted(() => { obtenerUsuarios() })
         <header class="page-header">
           <div class="page-title">
             <span class="page-eyebrow">⚡ Gestión del sistema</span>
-            <h1>{{ vista === 'usuarios' ? 'Usuarios' : 'Clientes' }}</h1>
+            <h1>{{ username }} {{ id }}</h1>
           </div>
           <div class="header-meta">
             <div class="stat-pill">
@@ -254,6 +257,7 @@ onMounted(() => { obtenerUsuarios() })
             <table v-else>
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Cédula</th>
                   <th>Nombre</th>
                   <th>Apellido</th>
@@ -265,6 +269,7 @@ onMounted(() => { obtenerUsuarios() })
               <tbody>
                 <tr v-for="(c, i) in clientesFiltrados" :key="c.idcustomer"
                     class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
+                    <td>{{ c.idcustomer }}</td>
                   <td>{{ c.cedula }}</td>
                   <td>
                     <div class="user-cell">

@@ -75,6 +75,9 @@ func main() {
 	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
 	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
 
+	//
+	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)
+
 	log.Println("🚀 Servidor corriendo en http://localhost:8080")
 
 	// Levantar servidor

@@ -31,6 +31,7 @@ const loginAdmin = async () => {
     localStorage.setItem('token',    data.token)
     localStorage.setItem('rol',      data.rol)
     localStorage.setItem('username', data.user)
+    localStorage.setItem('id', data.id)
 
     if (data.rol === 'admin') {
   router.push('/dashboard')

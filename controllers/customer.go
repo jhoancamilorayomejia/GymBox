@@ -44,3 +44,26 @@ func GetCustomer(c *gin.Context) {
 
 	c.JSON(http.StatusOK, customers)
 }
+
+func GetCustomerByCedula(c *gin.Context) {
+	cedula := c.Param("cedula")
+
+	var customer models.Customer
+	err := db.DB.QueryRow(`
+        SELECT idcustomer, cedula, name, lastname, phone, password
+        FROM customers
+        WHERE cedula = $1
+    `, cedula).Scan(
+		&customer.IDCustomer,
+		&customer.Cedula,
+		&customer.Name,
+		&customer.LastName,
+		&customer.Phone,
+		&customer.Password,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente no encontrado"})
+		return
+	}
+	c.JSON(http.StatusOK, customer)
+}

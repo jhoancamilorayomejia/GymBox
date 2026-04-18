@@ -39,9 +39,9 @@ func Login(c *gin.Context) {
 	// Buscar usuario en DB
 	var user models.User
 	err := db.DB.QueryRow(
-		`SELECT username, password, rol FROM users WHERE username=$1`,
+		`SELECT id, username, password, rol FROM users WHERE username=$1`,
 		req.Username,
-	).Scan(&user.Username, &user.Password, &user.Rol)
+	).Scan(&user.ID, &user.Username, &user.Password, &user.Rol)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -65,6 +65,7 @@ func Login(c *gin.Context) {
 	expirationTime := time.Now().Add(time.Hour * 2)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":       user.ID,
 		"username": user.Username,
 		"rol":      user.Rol,
 		"exp":      expirationTime.Unix(),
@@ -82,6 +83,7 @@ func Login(c *gin.Context) {
 		"message": "Login exitoso",
 		"user":    user.Username,
 		"rol":     user.Rol,
+		"id":      user.ID,
 		"token":   tokenString,
 		"expires": expirationTime, // 👈 útil para frontend
 	})

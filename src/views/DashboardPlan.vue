@@ -15,6 +15,7 @@ const showModal = ref(false)
 const saving    = ref(false)
 const saveError = ref('')
 
+
 const getFechaHoy = () => {
   const hoy = new Date()
   return `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
@@ -50,7 +51,7 @@ const getToken = () => {
   return token
 }
 
-// ✅ Cerrar sesión corregido
+// Cerrar sesión
 const cerrarSesion = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('rol')
@@ -118,6 +119,111 @@ const guardarPlan = async () => {
     saveError.value = err.message
   } finally {
     saving.value = false
+  }
+}
+
+// ── Edit plan
+const planEditandoId = ref(null)
+const showEditModal   = ref(false)
+
+const abrirEditar = (plan) => {
+  planEditandoId.value = plan.idplan
+
+  formPlan.value = {
+    tipo_plan: plan.typeplan,
+    precio: plan.price,
+    fecha_pago: plan.datepay?.split('T')[0] || plan.datepay,
+    fecha_inicio: plan.datestart?.split('T')[0] || plan.datestart,
+    fecha_fin: plan.datefinish?.split('T')[0] || plan.datefinish,
+    state: plan.state
+  }
+
+  showEditModal.value = true
+}
+
+const actualizarPlan = async () => {
+  saveError.value = ''
+  const f = formPlan.value
+
+  if (!f.tipo_plan || !f.precio || !f.fecha_pago || !f.fecha_inicio || !f.fecha_fin || !f.state) {
+    saveError.value = 'Todos los campos son obligatorios'
+    return
+  }
+
+  saving.value = true
+
+  try {
+    const token = getToken()
+    if (!token) return
+
+    const payload = {
+      idplan: planEditandoId.value,
+      typeplan: f.tipo_plan,
+      price: Number(f.precio),
+      datepay: f.fecha_pago,
+      datestart: f.fecha_inicio,
+      datefinish: f.fecha_fin,
+      state: f.state
+    }
+
+    const res = await fetch(`/api/update-plans/${planEditandoId.value}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (res.status === 401) {
+      localStorage.removeItem('token')
+      router.push('/login')
+      return
+    }
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || 'Error al actualizar el plan')
+    }
+
+    showEditModal.value = false
+    await obtenerPlanes()
+
+  } catch (err) {
+    saveError.value = err.message
+  } finally {
+    saving.value = false
+  }
+}
+
+// ──  plan
+const eliminarPlan = async (id) => {
+  if (!confirm('¿Seguro que deseas eliminar este plan?')) return
+
+  try {
+    const token = getToken()
+    if (!token) return
+
+    const res = await fetch(`/api/delete-plans/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (res.status === 401) {
+      localStorage.removeItem('token')
+      router.push('/login')
+      return
+    }
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || 'Error al eliminar')
+    }
+
+    await obtenerPlanes()
+
+  } catch (err) {
+    alert(err.message)
   }
 }
 
@@ -234,7 +340,6 @@ onMounted(() => { obtenerPlanes() })
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>Tipo de Plan</th>
                   <th>Precio</th>
                   <th>Fecha Pago</th>
@@ -255,7 +360,6 @@ onMounted(() => { obtenerPlanes() })
               <tbody>
                 <tr v-for="(p, i) in planes" :key="p.idplan"
                     class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
-                  <td><span class="id-badge">{{ p.idplan }}</span></td>
                   <td><span class="tipo-label">{{ p.typeplan }}</span></td>
                   <td><span class="precio-val">${{ Number(p.price).toLocaleString('es-CO') }}</span></td>
                   <td>{{ fmtFecha(p.datepay) }}</td>
@@ -263,10 +367,12 @@ onMounted(() => { obtenerPlanes() })
                   <td>{{ fmtFecha(p.datefinish) }}</td>
                   <td><span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span></td>
                   <td class="td-center">
-                    <button class="action-btn edit-btn" title="Editar">
-                      <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                    <button class="action-btn edit-btn" @click="abrirEditar(p)" title="Editar">
+                    <svg viewBox="0 0 20 20" fill="none"> <path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" 
+                      stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    </svg>
                     </button>
-                    <button class="action-btn delete-btn" title="Eliminar">
+                    <button class="action-btn delete-btn" @click="eliminarPlan(p.idplan)" title="Eliminar">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                   </td>
@@ -289,7 +395,7 @@ onMounted(() => { obtenerPlanes() })
       </main>
     </div>
 
-    <!-- ── Modal ── -->
+    <!-- ── Modal create plan── -->
     <transition name="modal-fade">
       <div v-if="showModal" class="modal-overlay" @click.self="showModal = false; resetForm()">
         <div class="modal">
@@ -359,10 +465,82 @@ onMounted(() => { obtenerPlanes() })
               {{ saving ? 'Guardando...' : 'Guardar Plan' }}
             </button>
           </div>
-
         </div>
       </div>
     </transition>
+
+     <!-- ── Modal Editar plan── -->
+           <transition name="modal-fade">
+  <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+    <div class="modal">
+
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">✏️ Editar plan</span>
+          <h2>Actualizar membresía</h2>
+          <p class="modal-sub">ID Plan: {{ planEditandoId }}</p>
+        </div>
+        <button class="modal-close" @click="showEditModal = false">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-grid">
+
+          <div class="mfield">
+            <label>Tipo de plan *</label>
+            <select v-model="formPlan.tipo_plan">
+              <option value="dia">Día</option>
+              <option value="semana">Semana</option>
+              <option value="mes">Mes</option>
+              <option value="anio">Año</option>
+            </select>
+          </div>
+
+          <div class="mfield">
+            <label>Precio *</label>
+            <input v-model="formPlan.precio" type="number" />
+          </div>
+
+          <!-- 👇 AQUÍ cambia respecto al create -->
+          <div class="mfield">
+            <label>Fecha de pago</label>
+            <input v-model="formPlan.fecha_pago" type="date" />
+          </div>
+
+          <div class="mfield">
+            <label>Estado *</label>
+            <select v-model="formPlan.state">
+              <option value="pagado">Pagado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+
+          <div class="mfield">
+            <label>Fecha inicio *</label>
+            <input v-model="formPlan.fecha_inicio" type="date" />
+          </div>
+
+          <div class="mfield">
+            <label>Fecha fin *</label>
+            <input v-model="formPlan.fecha_fin" type="date" />
+          </div>
+
+        </div>
+
+        <p v-if="saveError" class="save-error">⚠ {{ saveError }}</p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" @click="showEditModal = false">Cancelar</button>
+
+        <button class="btn-save" @click="actualizarPlan" :disabled="saving">
+          {{ saving ? 'Actualizando...' : 'Actualizar Plan' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</transition>
 
   </div>
 </template>

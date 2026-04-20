@@ -72,12 +72,17 @@ func main() {
 	//ruta para admin, con permisos token
 	r.GET("/api/users", AuthMiddleware(), controllers.GetUser)
 	r.GET("/api/customers", AuthMiddleware(), controllers.GetCustomer)
-	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
-	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
 
+	//Users endpoint desde administrador
 	r.POST("/api/new-users", AuthMiddleware(), controllers.CreateUser)
 	r.DELETE("/api/delete-users/:id", controllers.DeleteUser)
 	r.PUT("/api/update-users/:id", controllers.UpdateUser)
+
+	//planes endpoint desde administrador
+	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
+	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
+	r.DELETE("/api/delete-plans/:id", controllers.DeletePlan)
+	r.PUT("/api/update-plans/:id", controllers.UpdatePlan)
 
 	r.POST("/api/new-customers", controllers.CreateCustomer)
 	r.PUT("/api/update-customers/:id", controllers.UpdateCustomer)

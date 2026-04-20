@@ -75,6 +75,14 @@ func main() {
 	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
 	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
 
+	r.POST("/api/new-users", AuthMiddleware(), controllers.CreateUser)
+	r.DELETE("/api/delete-users/:id", controllers.DeleteUser)
+	r.PUT("/api/update-users/:id", controllers.UpdateUser)
+
+	r.POST("/api/new-customers", controllers.CreateCustomer)
+	r.PUT("/api/update-customers/:id", controllers.UpdateCustomer)
+	r.DELETE("/api/delete-customers/:id", controllers.DeleteCustomer)
+
 	//
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)
 

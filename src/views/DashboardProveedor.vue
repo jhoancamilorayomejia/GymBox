@@ -10,12 +10,26 @@ const planes      = ref([])
 const loading     = ref(true)
 const errorMsg    = ref('')
 const viewDate    = ref(new Date())
-const verVencidos = ref(false)   // toggle historial vencidos
+const verVencidos = ref(false)
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
-// ── Auth ──────────────────────────────────────────────────────────
+// ✅ ───────────── FIX GLOBAL DE FECHAS ─────────────
+const parseFechaLocal = (fechaStr) => {
+  const [year, month, day] = fechaStr.split('T')[0].split('-')
+  return new Date(year, month - 1, day)
+}
+
+const normalizar = (fechaStr) => {
+  const d = parseFechaLocal(fechaStr)
+  d.setHours(0,0,0,0)
+  return d
+}
+// ────────────────────────────────────────────────
+
+
+// ── Auth ──────────────────────────────────────────
 
 const tokenExpirado = (token) => {
   try {
@@ -25,14 +39,11 @@ const tokenExpirado = (token) => {
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('rol')
-  localStorage.removeItem('username')
-  localStorage.removeItem('id')
+  localStorage.clear()
   router.push('/login')
 }
 
-// ── Fetch ─────────────────────────────────────────────────────────
+// ── Fetch ─────────────────────────────────────────
 
 const obtenerPlanes = async () => {
   loading.value = true; errorMsg.value = ''
@@ -58,121 +69,141 @@ const obtenerPlanes = async () => {
   }
 }
 
-// ── Clasificación de planes ───────────────────────────────────────
+// ── Clasificación ─────────────────────────────────
 
-const hoyMidnight = () => { const h = new Date(); h.setHours(0,0,0,0); return h }
+const hoyMidnight = () => {
+  const h = new Date()
+  h.setHours(0,0,0,0)
+  return h
+}
 
-// Planes activos/futuros pagados (vigentes o por iniciar)
+// ✅ Planes activos
 const planesActivos = computed(() => {
   const hoy = hoyMidnight()
   return planes.value.filter(p => {
     if (p.state?.toLowerCase() !== 'pagado') return false
-    const fin = new Date(p.datefinish); fin.setHours(0,0,0,0)
+    const fin = normalizar(p.datefinish)
     return fin >= hoy
-  }).sort((a, b) => new Date(a.datestart) - new Date(b.datestart))
+  }).sort((a, b) => normalizar(a.datestart) - normalizar(b.datestart))
 })
 
-// Planes vencidos pagados
+// ✅ Planes vencidos
 const planesVencidos = computed(() => {
   const hoy = hoyMidnight()
   return planes.value.filter(p => {
     if (p.state?.toLowerCase() !== 'pagado') return false
-    const fin = new Date(p.datefinish); fin.setHours(0,0,0,0)
+    const fin = normalizar(p.datefinish)
     return fin < hoy
-  }).sort((a, b) => new Date(b.datefinish) - new Date(a.datefinish))
+  }).sort((a, b) => normalizar(b.datefinish) - normalizar(a.datefinish))
 })
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────
 
 const fmtFecha = (str) => {
   if (!str) return '—'
-  const d = new Date(str)
-  return isNaN(d) ? str : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+  const [year, month, day] = str.split('T')[0].split('-')
+  return `${day}/${month}/${year}`
 }
 
 const fmtFechaLarga = (str) => {
   if (!str) return '—'
-  const d = new Date(str)
-  return isNaN(d) ? str : d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+  const d = parseFechaLocal(str)
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const estadoClass = (s) => {
   if (!s) return 'badge-default'
-  if (s.toLowerCase() === 'pagado')    return 'badge-pagado'
+  if (s.toLowerCase() === 'pagado') return 'badge-pagado'
   if (s.toLowerCase() === 'pendiente') return 'badge-pendiente'
   return 'badge-default'
 }
 
+// ✅ Disponibilidad fila
 const dispFila = (p) => {
   const hoy = hoyMidnight()
-  const ini = new Date(p.datestart); ini.setHours(0,0,0,0)
-  const fin = new Date(p.datefinish); fin.setHours(0,0,0,0)
+  const ini = normalizar(p.datestart)
+  const fin = normalizar(p.datefinish)
+
   if (hoy < ini) {
     const d = Math.ceil((ini - hoy) / 86400000)
     return { label: `Inicia en ${d}d`, clase: 'disp-proximo' }
   }
+
   if (hoy > fin) return { label: 'Vencido', clase: 'disp-vencido' }
+
   const d = Math.ceil((fin - hoy) / 86400000)
   if (d === 0) return { label: 'Vence hoy', clase: 'disp-vencer-hoy' }
+
   return { label: `${d}d restantes`, clase: 'disp-activo' }
 }
 
-// ── Resumen de planes activos (TODOS, no solo el primero) ─────────
+// ── Resumen ───────────────────────────────────────
 
-// Cada plan activo/futuro pagado tiene su propia tarjeta de resumen
 const resumenPlanes = computed(() => {
   const hoy = hoyMidnight()
+
   return planesActivos.value.map(p => {
-    const ini = new Date(p.datestart); ini.setHours(0,0,0,0)
-    const fin = new Date(p.datefinish); fin.setHours(0,0,0,0)
+    const ini = normalizar(p.datestart)
+    const fin = normalizar(p.datefinish)
+
     const esFuturo = hoy < ini
     const diasRest = Math.max(0, Math.ceil((fin - hoy) / 86400000))
 
     let estado, mensaje
+
     if (esFuturo) {
       const d = Math.ceil((ini - hoy) / 86400000)
       estado  = 'proximo'
       mensaje = `Inicia en ${d} día${d !== 1 ? 's' : ''}, el ${fmtFechaLarga(p.datestart)}.`
     } else if (diasRest === 0) {
       estado  = 'vence-hoy'
-      mensaje = 'Este plan vence HOY. ¡Renueva para seguir entrenando!'
+      mensaje = 'Este plan vence HOY.'
     } else {
       estado  = 'activo'
-      mensaje = `Acceso válido hasta el ${fmtFechaLarga(p.datefinish)}. Quedan ${diasRest} día${diasRest !== 1 ? 's' : ''}.`
+      mensaje = `Acceso válido hasta el ${fmtFechaLarga(p.datefinish)}. Quedan ${diasRest} días.`
     }
 
-    return { plan: p, estado, mensaje, diasRest }
+    return { plan: p, estado, mensaje }
   })
 })
 
-// ── Calendario ────────────────────────────────────────────────────
+// ── Calendario ────────────────────────────────────
 
-const mesLabel    = computed(() => `${MESES[viewDate.value.getMonth()]} ${viewDate.value.getFullYear()}`)
-const primerDia   = computed(() => new Date(viewDate.value.getFullYear(), viewDate.value.getMonth(), 1).getDay())
-const diasEnMes   = computed(() => new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + 1, 0).getDate())
-const cambiarMes  = (delta) => { const d = new Date(viewDate.value); d.setMonth(d.getMonth() + delta); viewDate.value = d }
+const mesLabel = computed(() => `${MESES[viewDate.value.getMonth()]} ${viewDate.value.getFullYear()}`)
+const primerDia = computed(() => new Date(viewDate.value.getFullYear(), viewDate.value.getMonth(), 1).getDay())
+const diasEnMes = computed(() => new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + 1, 0).getDate())
 
-// Solo verde (activo) o gris vencido — sin por-vencer ni hoy
+const cambiarMes = (delta) => {
+  const d = new Date(viewDate.value)
+  d.setMonth(d.getMonth() + delta)
+  viewDate.value = d
+}
+
+// ✅ CALENDARIO CORREGIDO
 const clasificarDia = (dia) => {
-  const y     = viewDate.value.getFullYear()
-  const m     = viewDate.value.getMonth()
-  const fecha = new Date(y, m, dia); fecha.setHours(0,0,0,0)
-  const hoy   = hoyMidnight()
+  const y = viewDate.value.getFullYear()
+  const m = viewDate.value.getMonth()
+
+  const fecha = new Date(y, m, dia)
+  fecha.setHours(0,0,0,0)
+
+  const hoy = hoyMidnight()
   const esHoy = fecha.getTime() === hoy.getTime()
 
   let disponible = false
-  let vencido    = false
+  let vencido = false
 
   for (const p of planes.value) {
     if (p.state?.toLowerCase() !== 'pagado') continue
-    const ini = new Date(p.datestart); ini.setHours(0,0,0,0)
-    const fin = new Date(p.datefinish); fin.setHours(0,0,0,0)
+
+    const ini = normalizar(p.datestart)
+    const fin = normalizar(p.datefinish)
 
     if (fecha >= ini && fecha <= fin) {
       if (fin < hoy) {
-        vencido = true          // plan ya venció
+        vencido = true
       } else {
-        disponible = true       // plan vigente o futuro
+        disponible = true
         break
       }
     }

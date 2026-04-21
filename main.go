@@ -82,7 +82,12 @@ func main() {
 	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
 	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
 	r.DELETE("/api/delete-plans/:id", controllers.DeletePlan)
+	r.DELETE("/api/delete-plans-multiple", controllers.DeletePlan)
 	r.PUT("/api/update-plans/:id", controllers.UpdatePlan)
+
+	//para visualizar y actualizar precios de la membresia
+	r.GET("/api/priceplan", controllers.GetPricePlans)
+	r.PUT("/api/update-priceplan/:id", controllers.UpdatePricePlan)
 
 	r.POST("/api/new-customers", controllers.CreateCustomer)
 	r.PUT("/api/update-customers/:id", controllers.UpdateCustomer)

@@ -89,6 +89,11 @@ func main() {
 	r.GET("/api/priceplan", controllers.GetPricePlans)
 	r.PUT("/api/update-priceplan/:id", controllers.UpdatePricePlan)
 
+	//mostrar precios de membresia para clientes customer
+	r.GET("/api/customer-priceplans", controllers.GetPricePlans)
+	// Pagos Mercado Pago
+	r.POST("/api/payment/preference", AuthMiddleware(), controllers.CreatePreference)
+
 	r.POST("/api/new-customers", controllers.CreateCustomer)
 	r.PUT("/api/update-customers/:id", controllers.UpdateCustomer)
 	r.DELETE("/api/delete-customers/:id", controllers.DeleteCustomer)

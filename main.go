@@ -68,6 +68,7 @@ func main() {
 
 	// ✅ Ruta de login Publica
 	r.POST("/api/login", controllers.Login)
+	r.GET("/api/login-price_plans", controllers.GetPricePlans)
 
 	//ruta para admin, con permisos token
 	r.GET("/api/users", AuthMiddleware(), controllers.GetUser)

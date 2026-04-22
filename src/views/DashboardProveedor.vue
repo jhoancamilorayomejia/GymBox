@@ -72,6 +72,55 @@ const cantidadUnidades = ref(1)
 const preferenceId     = ref(null)
 const mostrarWallet    = ref(false)
 
+// ── Fechas ────────────────────────────────────────────────
+const fechaInicio = ref('')   // formato YYYY-MM-DD (input type="date")
+
+// Fecha mínima = hoy
+const fechaMinima = computed(() => {
+  const hoy = new Date()
+  return hoy.toISOString().split('T')[0]
+})
+
+// Calcula la fecha final según tipo de plan y cantidad
+const fechaFin = computed(() => {
+  if (!fechaInicio.value || !planSeleccionado.value) return ''
+  const [y, m, d] = fechaInicio.value.split('-').map(Number)
+  const fecha = new Date(y, m - 1, d)
+  const tipo  = planSeleccionado.value.typeplan
+  const cant  = cantidadUnidades.value
+
+  if (tipo === 'dia')    fecha.setDate(fecha.getDate() + cant - 1)
+  if (tipo === 'semana') fecha.setDate(fecha.getDate() + cant * 7 - 1)
+  if (tipo === 'mes')    fecha.setMonth(fecha.getMonth() + cant, fecha.getDate() - 1)
+  if (tipo === 'anio')   fecha.setFullYear(fecha.getFullYear() + cant, fecha.getMonth(), fecha.getDate() - 1)
+
+  // Formato YYYY-MM-DD
+  const yy = fecha.getFullYear()
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0')
+  const dd = String(fecha.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+})
+
+// Formato legible dd/mm/yyyy
+const fmtDateInput = (str) => {
+  if (!str) return '—'
+  const [y, m, d] = str.split('-')
+  return `${d}/${m}/${y}`
+}
+
+// Descripción del rango
+const descripcionRango = computed(() => {
+  if (!fechaInicio.value || !planSeleccionado.value) return ''
+  const tipo = planSeleccionado.value.typeplan
+  const cant = cantidadUnidades.value
+  const unidad = LABEL_PLANES[tipo] || tipo
+  const plural = cant > 1
+  const unidadPlural = tipo === 'mes' ? (plural ? 'Meses' : 'Mes')
+                     : tipo === 'anio' ? (plural ? 'Años' : 'Año')
+                     : unidad + (plural ? 's' : '')
+  return `${cant} ${unidadPlural} · ${fmtDateInput(fechaInicio.value)} → ${fmtDateInput(fechaFin.value)}`
+})
+
 const obtenerPricePlans = async () => {
   try {
     const res = await fetch('/api/customer-priceplans')
@@ -91,6 +140,7 @@ const abrirModal = async () => {
   cantidadUnidades.value = 1
   mostrarWallet.value = false
   preferenceId.value = null
+  fechaInicio.value = ''
   mostrarModal.value = true
 }
 
@@ -100,6 +150,7 @@ const cerrarModal = () => {
   cantidadUnidades.value = 1
   mostrarWallet.value = false
   preferenceId.value = null
+  fechaInicio.value = ''
 }
 
 const seleccionarPlan = (plan) => {
@@ -119,6 +170,10 @@ const realizarPago = async () => {
     alert('Selecciona un plan')
     return
   }
+  if (!fechaInicio.value) {
+    alert('Selecciona una fecha de inicio')
+    return
+  }
   try {
     const token = localStorage.getItem('token')
     const res = await fetch('/api/payment/preference', {
@@ -128,9 +183,12 @@ const realizarPago = async () => {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        amount:   totalAPagar.value,
-        username: username,
-        planType: planSeleccionado.value.typeplan
+        amount:    totalAPagar.value,
+        username:  username,
+        planType:  planSeleccionado.value.typeplan,
+        quantity:  cantidadUnidades.value,
+        dateStart: fechaInicio.value,
+        dateEnd:   fechaFin.value
       })
     })
     if (!res.ok) throw new Error('Error al crear la preferencia')
@@ -447,9 +505,7 @@ onMounted(() => { obtenerPlanes() })
       </main>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!-- MODAL DE PAGO                                              -->
-    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- MODAL DE PAGO -->
     <transition name="modal-fade">
       <div v-if="mostrarModal" class="modal-overlay" @click.self="cerrarModal">
         <div class="modal-pay">
@@ -458,7 +514,7 @@ onMounted(() => { obtenerPlanes() })
             <div>
               <span class="mpay-eyebrow">⚡ RAYOBOX · CROSS LIFTING</span>
               <h2 class="mpay-title">Nueva Suscripción</h2>
-              <p class="mpay-sub">Selecciona tu plan y la cantidad de unidades</p>
+              <p class="mpay-sub">Selecciona tu plan, fechas y cantidad</p>
             </div>
             <button class="mpay-close" @click="cerrarModal">✕</button>
           </div>
@@ -485,6 +541,7 @@ onMounted(() => { obtenerPlanes() })
                 </button>
               </div>
 
+              <!-- Selector de cantidad -->
               <div class="mpay-cantidad-box" v-if="planSeleccionado">
                 <p class="mpay-section-label" style="margin-bottom:10px">
                   CANTIDAD DE {{ (LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan).toUpperCase() + (cantidadUnidades > 1 ? 'S' : '') }}
@@ -497,6 +554,32 @@ onMounted(() => { obtenerPlanes() })
                 <p class="mpay-cantidad-hint">
                   {{ cantidadUnidades }} {{ LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan }}{{ cantidadUnidades > 1 ? 's' : '' }} de membresía
                 </p>
+              </div>
+
+              <!-- ✅ Selector de fecha de inicio -->
+              <div class="mpay-fecha-box" v-if="planSeleccionado">
+                <p class="mpay-section-label" style="margin-bottom:10px">FECHA DE INICIO</p>
+                <input
+                  type="date"
+                  class="mpay-date-input"
+                  v-model="fechaInicio"
+                  :min="fechaMinima"
+                />
+                <!-- ✅ Fecha final calculada automáticamente -->
+                <div class="mpay-fecha-fin" v-if="fechaFin">
+                  <div class="mpay-fecha-row">
+                    <div class="mpay-fecha-item">
+                      <span class="mpay-fecha-key">INICIO</span>
+                      <span class="mpay-fecha-val">{{ fmtDateInput(fechaInicio) }}</span>
+                    </div>
+                    <span class="mpay-fecha-arrow">→</span>
+                    <div class="mpay-fecha-item">
+                      <span class="mpay-fecha-key">FIN</span>
+                      <span class="mpay-fecha-val">{{ fmtDateInput(fechaFin) }}</span>
+                    </div>
+                  </div>
+                  <p class="mpay-fecha-desc">{{ descripcionRango }}</p>
+                </div>
               </div>
             </div>
 
@@ -528,6 +611,15 @@ onMounted(() => { obtenerPlanes() })
                       <span>Cantidad</span>
                       <span>× {{ cantidadUnidades }}</span>
                     </div>
+                    <!-- ✅ Fechas en el resumen -->
+                    <div class="mpay-linea" v-if="fechaInicio">
+                      <span>Fecha inicio</span>
+                      <span>{{ fmtDateInput(fechaInicio) }}</span>
+                    </div>
+                    <div class="mpay-linea" v-if="fechaFin">
+                      <span>Fecha fin</span>
+                      <span>{{ fmtDateInput(fechaFin) }}</span>
+                    </div>
                     <div class="mpay-divider"></div>
                     <div class="mpay-linea mpay-linea-total">
                       <span>TOTAL</span>
@@ -545,8 +637,17 @@ onMounted(() => { obtenerPlanes() })
                   </div>
                 </div>
 
-                <!-- ✅ Botón SIN wallet_container adentro -->
-                <button class="mpay-btn-pagar" @click="realizarPago" :disabled="mostrarWallet">
+                <!-- Alerta si falta fecha -->
+                <div class="mpay-alerta" v-if="!fechaInicio">
+                  <span>📅</span> Selecciona una fecha de inicio para continuar
+                </div>
+
+                <!-- Botón pagar -->
+                <button
+                  class="mpay-btn-pagar"
+                  @click="realizarPago"
+                  :disabled="mostrarWallet || !fechaInicio"
+                >
                   <span class="mpay-pagar-bolt">⚡</span>
                   <span class="mpay-pagar-text">
                     <span class="mpay-pagar-titulo">{{ mostrarWallet ? 'Procesando...' : 'Pagar ahora' }}</span>
@@ -619,7 +720,6 @@ onMounted(() => { obtenerPlanes() })
 .btn-sus-bolt { font-size: 1rem; opacity: .4; }
 
 .main { flex: 1; height: 100vh; overflow-y: auto; padding: 48px 60px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; flex-shrink: 0; }
 .page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 6px; }
 .page-title h1 { font-family: 'Barlow Condensed',sans-serif; font-size: 3rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #fff; line-height: 1; }
@@ -641,7 +741,6 @@ onMounted(() => { obtenerPlanes() })
 
 .top-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; flex-shrink: 0; }
 .resumenes-col { display: flex; flex-direction: column; gap: 12px; }
-
 .resumen-card { background: #111; border: 1px solid rgba(245,197,0,.12); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both; position: relative; overflow: hidden; }
 .resumen-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
 .resumen-activo::before    { background: #4ade80; }
@@ -685,7 +784,7 @@ onMounted(() => { obtenerPlanes() })
 .dia-ninguno { color: #2a2a2a; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.03); }
 .dia-activo  { color: #d1fae5; background: rgba(74,222,128,.18); border: 1px solid rgba(74,222,128,.35); }
 .dia-activo:hover { background: rgba(74,222,128,.26); }
-.dia-vencido { color: #555; background: rgba(100,100,100,.12); border: 1px solid rgba(100,100,100,.22); }
+.dia-vencido { color: #fffbfb; background: rgba(148, 21, 21, 0.12); border: 1px solid rgba(100,100,100,.22); }
 .dia-hoy     { background: #f5c500 !important; color: #0a0a0a !important; border: none !important; font-weight: 900; box-shadow: 0 0 12px rgba(245,197,0,.4); }
 
 .section-label { display: flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed',sans-serif; font-size: .63rem; letter-spacing: .28em; text-transform: uppercase; color: #f5c500; font-weight: 700; flex-shrink: 0; }
@@ -718,13 +817,13 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .empty-row { text-align: center; color: #444; padding: 40px 20px !important; font-size: .88rem; }
 
 .vencidos-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-.venc-count { background: rgba(100,100,100,.15); border: 1px solid rgba(100,100,100,.25); color: #555; font-size: .6rem; font-weight: 700; letter-spacing: .1em; padding: 2px 8px; margin-left: 4px; border-radius: 2px; }
+.venc-count { background: rgba(204, 12, 12, 0.15); border: 1px solid rgba(100,100,100,.25); color: #555; font-size: .6rem; font-weight: 700; letter-spacing: .1em; padding: 2px 8px; margin-left: 4px; border-radius: 2px; }
 .venc-vacio { font-size: .72rem; color: #333; letter-spacing: .06em; }
 .btn-ver-vencidos { display: inline-flex; align-items: center; gap: 7px; background: transparent; border: 1px solid rgba(100,100,100,.25); color: #555; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; padding: 8px 16px; cursor: pointer; transition: all .2s; }
 .btn-ver-vencidos svg { width: 13px; height: 13px; flex-shrink: 0; }
 .btn-ver-vencidos:hover { border-color: rgba(100,100,100,.5); color: #888; background: rgba(100,100,100,.06); }
 
-.vencidos-panel { display: flex; flex-direction: column; gap: 16px; border: 1px solid rgba(100,100,100,.15); background: rgba(100,100,100,.03); padding: 20px; }
+.vencidos-panel { display: flex; flex-direction: column; gap: 16px; border: 1px solid rgba(90, 88, 88, 0.15); background: rgba(100,100,100,.03); padding: 20px; }
 .venc-top-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
 .venc-info-card { background: #0f0f0f; border: 1px solid rgba(100,100,100,.15); padding: 18px 20px; }
 .venc-resumenes { display: flex; flex-direction: column; gap: 10px; }
@@ -735,8 +834,8 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .venc-arrow { color: #333; }
 .venc-precio { font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: .8rem; color: #444; margin-top: 4px; }
 .table-vencidos { border-color: rgba(100,100,100,.15); max-height: 200px; }
-.table-vencidos thead { background: rgba(100,100,100,.06); border-bottom-color: rgba(100,100,100,.15); }
-.table-vencidos th { color: #555; }
+.table-vencidos thead { background: rgba(9, 51, 128, 0.06); border-bottom-color: rgba(100,100,100,.15); }
+.table-vencidos th { color: #ffffff; }
 .row-vencido { opacity: .7; }
 .row-vencido:hover { opacity: 1; background: rgba(100,100,100,.05) !important; }
 .id-badge-venc { background: rgba(100,100,100,.08) !important; border-color: rgba(100,100,100,.2) !important; color: #555 !important; }
@@ -781,6 +880,24 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .mpay-qty-val { width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1.2rem; color: #fff; background: #0d0d0d; border-left: 1px solid rgba(245,197,0,.15); border-right: 1px solid rgba(245,197,0,.15); }
 .mpay-cantidad-hint { font-size: .72rem; color: #555; margin-top: 10px; letter-spacing: .04em; }
 
+/* ✅ Estilos del selector de fecha */
+.mpay-fecha-box { background: #111; border: 1px solid rgba(245,197,0,.1); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.mpay-date-input {
+  width: 100%; background: #0d0d0d; border: 1px solid rgba(245,197,0,.25);
+  color: #f0f0f0; padding: 10px 14px; font-family: 'Barlow',sans-serif;
+  font-size: .85rem; cursor: pointer; outline: none; transition: border-color .2s;
+  color-scheme: dark;
+}
+.mpay-date-input:focus { border-color: #f5c500; }
+.mpay-date-input::-webkit-calendar-picker-indicator { filter: invert(1) sepia(1) saturate(5) hue-rotate(10deg); cursor: pointer; }
+.mpay-fecha-fin { background: rgba(245,197,0,.04); border: 1px solid rgba(245,197,0,.12); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mpay-fecha-row { display: flex; align-items: center; gap: 12px; }
+.mpay-fecha-item { display: flex; flex-direction: column; gap: 2px; }
+.mpay-fecha-key { font-family: 'Barlow Condensed',sans-serif; font-size: .55rem; letter-spacing: .2em; text-transform: uppercase; color: #666; font-weight: 700; }
+.mpay-fecha-val { font-family: 'Barlow Condensed',sans-serif; font-size: .9rem; font-weight: 700; color: #f5c500; }
+.mpay-fecha-arrow { color: #f5c500; font-weight: 700; font-size: 1rem; }
+.mpay-fecha-desc { font-size: .68rem; color: #555; letter-spacing: .04em; }
+
 .mpay-right { padding: 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; background: rgba(245,197,0,.015); }
 .mpay-right-vacio { align-items: center; justify-content: center; }
 .mpay-vacio { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: #333; }
@@ -808,18 +925,20 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .mpay-desglose-chips::-webkit-scrollbar-thumb:hover { background: rgba(245,197,0,.45); }
 .mpay-chip { font-size: .72rem; color: #666; padding: 4px 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); border-radius: 1px; font-family: 'Barlow Condensed',sans-serif; letter-spacing: .04em; }
 
+/* ✅ Alerta fecha faltante */
+.mpay-alerta { display: flex; align-items: center; gap: 8px; background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.25); padding: 10px 14px; font-size: .75rem; color: #f59e0b; letter-spacing: .03em; }
+
 .mpay-btn-pagar { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, #f5c500 0%, #ff9500 100%); border: none; padding: 16px 22px; cursor: pointer; transition: all .25s; width: 100%; text-align: left; position: relative; overflow: hidden; }
 .mpay-btn-pagar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%); pointer-events: none; }
 .mpay-btn-pagar:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 8px 30px rgba(245,197,0,.35); transform: translateY(-1px); }
 .mpay-btn-pagar:active:not(:disabled) { transform: translateY(0); filter: brightness(.95); }
-.mpay-btn-pagar:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; filter: none !important; box-shadow: none !important; }
+.mpay-btn-pagar:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; filter: none !important; box-shadow: none !important; }
 .mpay-pagar-bolt { font-size: 1.4rem; flex-shrink: 0; }
 .mpay-pagar-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
 .mpay-pagar-titulo { font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1rem; letter-spacing: .15em; text-transform: uppercase; color: #0a0a0a; }
 .mpay-pagar-monto { font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: .82rem; color: rgba(0,0,0,.6); letter-spacing: .06em; }
 .mpay-pagar-arrow { width: 20px; height: 20px; stroke: rgba(0,0,0,.5); flex-shrink: 0; }
 
-/* ✅ Contenedor del Brick de MercadoPago */
 #wallet_container { width: 100%; min-height: 48px; }
 
 .mpay-nota { font-size: .68rem; color: #444; line-height: 1.5; letter-spacing: .03em; padding: 0 2px; }

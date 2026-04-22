@@ -1,9 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-
+const showModal = ref(false)
 const loginEmail    = ref('')
 const loginPassword = ref('')
 const loginError    = ref('')
@@ -13,564 +13,671 @@ const showPassword  = ref(false)
 const loginAdmin = async () => {
   loginLoading.value = true
   loginError.value   = ''
-
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: loginEmail.value,
-        password: loginPassword.value
-      })
+      body: JSON.stringify({ username: loginEmail.value, password: loginPassword.value })
     })
-
     const data = await res.json()
-
     if (!res.ok) throw new Error(data.error || 'Usuario o contraseña incorrectos')
-
     localStorage.setItem('token',    data.token)
     localStorage.setItem('rol',      data.rol)
     localStorage.setItem('username', data.user)
-    localStorage.setItem('id', data.id)
-
-    if (data.rol === 'admin') {
-  router.push('/dashboard')
-} else if (data.rol === 'customer') {
-  router.push('/proyectos')
-} else {
-  router.push('/login')
-}
-
+    localStorage.setItem('id',       data.id)
+    showModal.value = false
+    if (data.rol === 'admin')         router.push('/dashboard')
+    else if (data.rol === 'customer') router.push('/proyectos')
+    else                              router.push('/login')
   } catch (err) {
     loginError.value = err.message
   } finally {
     loginLoading.value = false
   }
 }
+
+/* ── Planes dinámicos ── */
+const plansLoading = ref(true)
+const plansError   = ref('')
+const plans        = ref([])
+
+const PLAN_META = {
+  DIA:    { tag: 'Pase único',  highlight: false, weight: 1, perks: ['Acceso completo por 1 día','Todas las zonas de entrenamiento','Sin compromiso'] },
+  SEMANA: { tag: 'Más popular', highlight: true,  weight: 2, perks: ['Acceso ilimitado 7 días','Todas las zonas de entrenamiento','Pago digital disponible','Visualiza horarios en plataforma'] },
+  MES:    { tag: 'Recomendado', highlight: false, weight: 3, perks: ['Acceso ilimitado 30 días','Todas las zonas de entrenamiento','Pago digital disponible','Visualiza horarios en plataforma'] },
+  ANO:    { tag: 'Mejor valor', highlight: false, weight: 4, perks: ['Acceso ilimitado 365 días','Todas las zonas de entrenamiento','Pago digital disponible','Visualiza horarios en plataforma','Ahorrás vs mensual'] },
+}
+
+const normalizeKey = (str) => str.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'')
+const formatPrice  = (p)   => new Intl.NumberFormat('es-CO',{minimumFractionDigits:0}).format(p)
+
+onMounted(async () => {
+  try {
+    const res  = await fetch('/api/login-price_plans')
+    if (!res.ok) throw new Error('No se pudieron cargar los planes')
+    const data = await res.json()
+    plans.value = data
+      .map(p => {
+        const key  = normalizeKey(p.typeplan)
+        const meta = PLAN_META[key] || { tag:'', highlight:false, weight:99, perks:[] }
+        return { ...p, ...meta, name: p.typeplan }
+      })
+      .sort((a,b) => a.weight - b.weight)
+  } catch (e) {
+    plansError.value = e.message
+  } finally {
+    plansLoading.value = false
+  }
+})
+
+/* ── Disciplinas ── */
+const disciplines = [
+  {
+    name: 'CrossFit',
+    desc: 'Entrenamiento funcional de alta intensidad basado en movimientos compuestos y varianza constante.',
+    img:  'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=700&q=80',
+    alt:  'Atleta en plataforma de levantamiento olímpico con barra cargada'
+  },
+  {
+    name: 'Entrenamiento Funcional',
+    desc: 'Metodología orientada a patrones de movimiento naturales, mejorando fuerza, coordinación y resistencia.',
+    img:  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=700&q=80',
+    alt:  'Persona realizando entrenamiento funcional'
+  },
+  {
+    name: 'Powerlifting',
+    desc: 'Disciplina de fuerza máxima centrada en sentadilla, press de banca y peso muerto con progresión estructurada.',
+    img:  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=80',
+    alt:  'Atleta ejecutando press de banca en banco plano'
+  },
+  {
+    name: 'Sala de Máquinas',
+    desc: 'Zona equipada con maquinaria de resistencia para hipertrofia, rehabilitación y entrenamiento individualizado.',
+    img:  'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=700&q=80',
+    alt:  'Persona entrenando en máquina hack squat'
+  }
+]
+
+const benefits = [
+  { icon: '📅', title: 'Disponibilidad en tiempo real',  desc: 'Consultá desde la plataforma qué equipos y horarios están disponibles antes de ir a entrenar.' },
+  { icon: '💳', title: 'Pago 100% digital',              desc: 'Abonás tu plan de forma segura con Mercado Pago desde la app o web. Sin filas, sin efectivo.' },
+  { icon: '⚡', title: 'Gestión desde cualquier lugar',  desc: 'Accedé a tu historial, renovaciones y estado de membresía desde donde estés, 24/7.' }
+]
 </script>
 
 <template>
-  <div class="screen">
-    <!-- Fondo geométrico animado -->
-    <div class="bg-layer">
-      <div class="hex hex-1"></div>
-      <div class="hex hex-2"></div>
-      <div class="hex hex-3"></div>
-      <div class="slash slash-1"></div>
-      <div class="slash slash-2"></div>
-      <div class="slash slash-3"></div>
-      <div class="noise"></div>
-    </div>
+  <div class="site">
 
-    <!-- Panel izquierdo — branding -->
-    <aside class="brand-panel">
-      <div class="brand-inner">
-        <!-- Logo SVG recreado desde la imagen -->
-        <div class="logo-wrap">
-          <svg class="logo-svg" viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
-            <!-- Rayo -->
-            <polygon points="88,8 68,54 82,54 62,102 108,46 90,46 115,8" fill="#f5c500"/>
-            <!-- RAYO -->
-            <text x="110" y="50" font-family="'Barlow Condensed', sans-serif" font-weight="900"
-                  font-size="44" fill="#f5c500" letter-spacing="-1">RAYO</text>
-            <!-- BOX -->
-            <text x="110" y="90" font-family="'Barlow Condensed', sans-serif" font-weight="900"
-                  font-size="44" fill="#ffffff" letter-spacing="-1">BOX</text>
-            <!-- CROSS LIFTING -->
-            <text x="110" y="104" font-family="'Barlow Condensed', sans-serif" font-weight="400"
-                  font-size="11" fill="#888" letter-spacing="4">CROSS LIFTING</text>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div class="nav-inner">
+        <div class="nav-logo">
+          <svg viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
+            <polygon points="52,4 36,40 48,40 32,76 72,32 56,32 78,4" fill="#f5c500"/>
+            <text x="78" y="38" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#f5c500" letter-spacing="-1">RAYO</text>
+            <text x="78" y="68" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#fff" letter-spacing="-1">BOX</text>
+            <text x="78" y="78" font-family="'Barlow Condensed',sans-serif" font-weight="400" font-size="9" fill="#888" letter-spacing="3">CROSS LIFTING</text>
           </svg>
         </div>
-
-        <div class="brand-tagline">
-          <span class="tag-line">SISTEMA DE GESTIÓN</span>
-          <h2>Entrená.<br/>Gestioná.<br/>Dominá.</h2>
+        <div class="nav-links">
+          <a href="#sede">Sede</a>
+          <a href="#planes">Planes</a>
+          <a href="#disciplinas">Disciplinas</a>
+          <a href="#plataforma">Plataforma</a>
+          <button class="btn-nav-login" @click="showModal = true">Iniciar Sesión</button>
         </div>
+      </div>
+    </nav>
 
-        <div class="stats-row">
-          <div class="stat">
-            <span class="stat-num">100%</span>
-            <span class="stat-label">Digital</span>
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-bg">
+        <div class="hero-geo geo-1"></div>
+        <div class="hero-geo geo-2"></div>
+        <div class="hero-geo geo-3"></div>
+        <div class="hero-noise"></div>
+      </div>
+      <div class="hero-content">
+        <span class="hero-eyebrow">⚡ Bienvenido a</span>
+        <div class="hero-logo-img-wrap">
+          <img src="@/assets/rayo.png" alt="Rayo Box Cross Lifting" class="hero-logo-img" />
+        </div>
+        <p class="hero-sub">CrossFit · Funcional · Powerlifting · Máquinas<br/>Sede La Paila, Valle del Cauca</p>
+        <div class="hero-ctas">
+          <a href="#planes" class="btn-primary">Ver planes</a>
+          <button class="btn-secondary" @click="showModal = true">Iniciar Sesión</button>
+        </div>
+      </div>
+      <div class="hero-badge">
+        <span class="badge-num">+4</span>
+        <span class="badge-txt">Disciplinas disponibles</span>
+      </div>
+    </header>
+
+    <!-- SEDE -->
+    <section class="sede-section" id="sede">
+      <div class="section-inner">
+        <div class="section-label">📍 Ubicación</div>
+        <h2 class="section-title">Sede <span class="accent">La Paila</span>, Valle del Cauca</h2>
+        <p class="section-sub">Encontrá nuestro box y comenzá tu transformación hoy mismo.</p>
+        <div class="sede-card">
+          <div class="sede-info">
+            <div class="sede-detail"><span class="sd-icon">📍</span><div><strong>Dirección</strong><p>La Paila, Valle del Cauca, Colombia</p></div></div>
+            <div class="sede-detail"><span class="sd-icon">⏰</span><div><strong>Horarios</strong><p>Lunes a Sábado: 5:00am – 10:00pm</p></div></div>
+            <div class="sede-detail"><span class="sd-icon">📞</span><div><strong>Contacto</strong><p>Escribinos por WhatsApp</p></div></div>
+            <a href="#" class="btn-sede">Ver en el mapa</a>
           </div>
-          <div class="stat-divider"></div>
-          <div class="stat">
-            <span class="stat-num">24/7</span>
-            <span class="stat-label">Acceso</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat">
-            <span class="stat-num">∞</span>
-            <span class="stat-label">Poder</span>
+          <div class="sede-map-placeholder">
+            <div class="map-inner">
+              <div class="map-pin">📍</div>
+              <span>Rayo Box — La Paila</span>
+            </div>
           </div>
         </div>
       </div>
-    </aside>
+    </section>
 
-    <!-- Panel derecho — login -->
-    <main class="login-panel">
-      <div class="login-card">
-        <!-- Esquinas decorativas -->
-        <span class="corner tl"></span>
-        <span class="corner br"></span>
+    <!-- PLANES -->
+    <section class="planes-section" id="planes">
+      <div class="section-inner">
+        <div class="section-label">💪 Membresías</div>
+        <h2 class="section-title">Elegí tu <span class="accent">plan</span></h2>
+        <p class="section-sub">Accedé a Rayo Box con la modalidad que mejor se adapte a tu ritmo de entrenamiento.</p>
 
-        <div class="login-header">
-          <div class="bolt-icon">⚡</div>
-          <h1>Acceso al Sistema</h1>
-          <p>Ingresá tus credenciales para continuar</p>
+        <div v-if="plansLoading" class="plans-loading">
+          <div class="loading-spinner"></div>
+          <span>Cargando planes...</span>
+        </div>
+        <div v-else-if="plansError" class="plans-error"><span>⚠️ {{ plansError }}</span></div>
+        <div v-else class="planes-grid">
+          <div v-for="plan in plans" :key="plan.idpriceplan" class="plan-card" :class="{ featured: plan.highlight }">
+            <div v-if="plan.highlight" class="plan-badge">{{ plan.tag }}</div>
+            <div v-else class="plan-tag-small">{{ plan.tag }}</div>
+            <div class="plan-name">{{ plan.name }}</div>
+            <div class="plan-price">
+              <span class="price-currency">$</span>
+              <span class="price-num">{{ formatPrice(plan.price) }}</span>
+            </div>
+            <ul class="plan-perks">
+              <li v-for="perk in plan.perks" :key="perk"><span class="perk-check">✓</span> {{ perk }}</li>
+            </ul>
+            <button class="btn-plan" @click="showModal = true">Inscribirme</button>
+          </div>
         </div>
 
-        <form class="login-form" @submit.prevent="loginAdmin">
-
-          <div class="field" :class="{ filled: loginEmail }">
-            <label>Usuario</label>
-            <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-              <input
-                v-model="loginEmail"
-                type="text"
-                placeholder="Tu usuario"
-                autocomplete="username"
-                required
-              />
-            </div>
-          </div>
-
-          <div class="field" :class="{ filled: loginPassword }">
-            <label>Contraseña</label>
-            <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-              <input
-                v-model="loginPassword"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                class="eye-btn"
-                @click="showPassword = !showPassword"
-                :title="showPassword ? 'Ocultar' : 'Mostrar'"
-              >
-                <svg v-if="!showPassword" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
-                  <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
-                </svg>
-                <svg v-else viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <transition name="shake">
-            <div v-if="loginError" class="error-box">
-              <span>⚡</span> {{ loginError }}
-            </div>
-          </transition>
-
-          <button class="btn-login" type="submit" :disabled="loginLoading">
-            <span class="btn-bg"></span>
-            <span class="btn-label">
-              <svg v-if="loginLoading" class="spinner" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10"/>
-              </svg>
-              {{ loginLoading ? 'Ingresando...' : 'INGRESAR' }}
-            </span>
-          </button>
-
-        </form>
-
-        <p class="footer-note">
-          Rayo Box · Sistema de Gestión v1.0
-        </p>
+        <p class="planes-note">* Los precios pueden variar según disponibilidad y promociones vigentes.</p>
       </div>
-    </main>
+    </section>
+
+    <!-- DISCIPLINAS -->
+    <section class="disciplinas-section" id="disciplinas">
+      <div class="section-inner">
+        <div class="section-label">🏋️ Modalidades</div>
+        <h2 class="section-title">Metodologías de <span class="accent">alto rendimiento</span></h2>
+        <p class="section-sub">En Rayo Box integramos disciplinas complementarias para un desarrollo físico integral y progresivo.</p>
+        <div class="disc-grid">
+          <div class="disc-card" v-for="d in disciplines" :key="d.name">
+            <div class="disc-img-wrap">
+              <img :src="d.img" :alt="d.alt" class="disc-img" loading="lazy" />
+              <div class="disc-img-overlay"></div>
+            </div>
+            <div class="disc-body">
+              <div class="disc-line"></div>
+              <h3 class="disc-name">{{ d.name }}</h3>
+              <p class="disc-desc">{{ d.desc }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLATAFORMA -->
+    <section class="plataforma-section" id="plataforma">
+      <div class="section-inner plat-inner">
+        <div class="plat-text">
+          <div class="section-label">⚡ Plataforma digital</div>
+          <h2 class="section-title">Registrate y gestioná<br/><span class="accent">tu membresía online</span></h2>
+          <p class="section-sub">Más que un box, una plataforma completa para que tengas el control total de tu entrenamiento.</p>
+          <div class="benefits-list">
+            <div class="benefit-item" v-for="b in benefits" :key="b.title">
+              <div class="benefit-icon">{{ b.icon }}</div>
+              <div>
+                <strong>{{ b.title }}</strong>
+                <p>{{ b.desc }}</p>
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary" @click="showModal = true">Acceder a la plataforma</button>
+        </div>
+
+        <div class="plat-visual">
+          <div class="screen-mock">
+            <div class="mock-bar"><span></span><span></span><span></span></div>
+            <div class="mock-content">
+              <div class="mock-layout">
+
+                <div class="mock-sidebar">
+                  <div class="mock-logo-small">⚡ RAYO<br/><span>BOX</span></div>
+                  <div class="mock-nav-item active"><span class="nav-icon">☰</span> Mis Planes</div>
+                  <div class="mock-plan-btn">
+                    <span class="nav-icon">＋</span>
+                    <div class="mock-plan-btn-text">
+                      <strong>NUEVA<br/>SUSCRIPCIÓN</strong>
+                      <small>Renueva o agrega</small>
+                    </div>
+                  </div>
+                  <div class="mock-user-pill">
+                    <div class="mock-user-num">1</div>
+                    <div class="mock-user-info">
+                      <span>Usuario</span>
+                      <small>ID #1 · Miembro</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mock-main">
+                  <div class="mock-welcome">⚡ BIENVENIDO DE VUELTA</div>
+                  <div class="mock-uid">Usuario <span class="mock-uid-tag">#1</span></div>
+
+                  <div class="mock-counters">
+                    <div class="mock-counter-box">
+                      <div class="mock-counter-num">1</div>
+                      <div class="mock-counter-lbl">TOTAL</div>
+                    </div>
+                    <div class="mock-counter-box active-box">
+                      <div class="mock-counter-num">1</div>
+                      <div class="mock-counter-lbl">VIGENTES</div>
+                    </div>
+                  </div>
+
+                  <div class="mock-plan-active">
+                    <div class="mock-plan-header">
+                      <span class="mock-bolt">⚡</span>
+                      <span class="mock-badge-active">ACCESO ACTIVO</span>
+                      <span class="mock-plan-type">SEMANA</span>
+                    </div>
+                    <p class="mock-plan-desc">Acceso válido hasta el 28 de abril de 2026. Quedan 6 días.</p>
+                    <div class="mock-plan-dates">
+                      <div><small>INICIO</small><strong>20/04/2026</strong></div>
+                      <div class="mock-arrow">→</div>
+                      <div><small>FIN</small><strong>28/04/2026</strong></div>
+                      <div class="mock-plan-price-tag"><small>PRECIO</small><strong class="accent">$20.000</strong></div>
+                    </div>
+                  </div>
+
+                  <div class="mock-calendar">
+                    <div class="mock-cal-header">
+                      <span class="mock-cal-nav">‹</span>
+                      <strong>ABRIL 2026</strong>
+                      <span class="mock-cal-nav">›</span>
+                    </div>
+                    <div class="mock-cal-days">
+                      <span v-for="d in ['D','L','M','M','J','V','S']" :key="d" class="mock-cal-dow">{{d}}</span>
+                    </div>
+                    <div class="mock-cal-grid">
+                      <span v-for="i in 2" :key="'e'+i" class="mock-cal-cell empty"></span>
+                      <span v-for="n in 19" :key="n" class="mock-cal-cell muted">{{ n }}</span>
+                      <span class="mock-cal-cell avail">20</span>
+                      <span class="mock-cal-cell avail">21</span>
+                      <span class="mock-cal-cell today">22</span>
+                      <span class="mock-cal-cell avail">23</span>
+                      <span class="mock-cal-cell avail">24</span>
+                      <span class="mock-cal-cell avail">25</span>
+                      <span class="mock-cal-cell avail">26</span>
+                      <span class="mock-cal-cell avail">27</span>
+                      <span class="mock-cal-cell avail">28</span>
+                      <span class="mock-cal-cell muted">29</span>
+                      <span class="mock-cal-cell muted">30</span>
+                    </div>
+                    <div class="mock-cal-legend">
+                      <span><span class="legend-dot avail"></span>Disponible</span>
+                      <span><span class="legend-dot venc"></span>Vencido</span>
+                      <span><span class="legend-dot noacc"></span>Sin acceso</span>
+                    </div>
+                  </div>
+
+                  <div class="mock-table-section">
+                    <div class="mock-table-title">⊞ PLANES VIGENTES</div>
+                    <div class="mock-table-row header-row"><span>#</span><span>TIPO</span><span>PRECIO</span><span>ESTADO</span></div>
+                    <div class="mock-table-row">
+                      <span class="mock-id-badge">18</span>
+                      <span>SEMANA</span>
+                      <span class="accent">$20.000</span>
+                      <span class="mock-badge-estado active">ACTIVO</span>
+                    </div>
+                  </div>
+
+                  <div class="mock-mp-btn">
+                    <svg viewBox="0 0 60 24" class="mp-logo" xmlns="http://www.w3.org/2000/svg">
+                      <ellipse cx="12" cy="12" rx="10" ry="10" fill="#009ee3"/>
+                      <path d="M8 12 a4 4 0 0 1 8 0" stroke="#fff" stroke-width="2" fill="none"/>
+                      <circle cx="12" cy="8" r="1.5" fill="#fff"/>
+                    </svg>
+                    Pagar con Mercado Pago
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-logo">
+          <svg viewBox="0 0 160 70" xmlns="http://www.w3.org/2000/svg" style="width:120px">
+            <polygon points="46,3 30,36 42,36 26,67 64,28 48,28 70,3" fill="#f5c500"/>
+            <text x="70" y="33" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#f5c500">RAYO</text>
+            <text x="70" y="60" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#fff">BOX</text>
+          </svg>
+          <p>Sistema de Gestión v1.0<br/>La Paila, Valle del Cauca</p>
+        </div>
+        <div class="footer-links">
+          <a href="#sede">Sede</a>
+          <a href="#planes">Planes</a>
+          <a href="#disciplinas">Disciplinas</a>
+          <a @click="showModal = true" style="cursor:pointer">Iniciar Sesión</a>
+        </div>
+      </div>
+      <div class="footer-copy">© 2025 Rayo Box Cross Lifting · Todos los derechos reservados</div>
+    </footer>
+
+    <!-- MODAL LOGIN -->
+    <transition name="modal-fade">
+      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+        <div class="modal-card">
+          <button class="modal-close" @click="showModal = false">✕</button>
+          <div class="modal-brand">
+            <svg viewBox="0 0 160 70" xmlns="http://www.w3.org/2000/svg" style="width:130px">
+              <polygon points="46,3 30,36 42,36 26,67 64,28 48,28 70,3" fill="#f5c500"/>
+              <text x="70" y="33" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#f5c500">RAYO</text>
+              <text x="70" y="60" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#fff">BOX</text>
+            </svg>
+          </div>
+          <div class="modal-header">
+            <div class="bolt-icon">⚡</div>
+            <h1>Acceso al Sistema</h1>
+            <p>Ingresá tus credenciales para continuar</p>
+          </div>
+          <form class="login-form" @submit.prevent="loginAdmin">
+            <div class="field" :class="{ filled: loginEmail }">
+              <label>Usuario</label>
+              <div class="input-wrap">
+                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <input v-model="loginEmail" type="text" placeholder="Tu usuario" autocomplete="username" required/>
+              </div>
+            </div>
+            <div class="field" :class="{ filled: loginPassword }">
+              <label>Contraseña</label>
+              <div class="input-wrap">
+                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <input v-model="loginPassword" :type="showPassword ? 'text' : 'password'" placeholder="••••••••" autocomplete="current-password" required/>
+                <button type="button" class="eye-btn" @click="showPassword = !showPassword">
+                  <svg v-if="!showPassword" viewBox="0 0 20 20" fill="none">
+                    <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
+                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 20 20" fill="none">
+                    <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <transition name="shake">
+              <div v-if="loginError" class="error-box"><span>⚡</span> {{ loginError }}</div>
+            </transition>
+            <button class="btn-login" type="submit" :disabled="loginLoading">
+              <span class="btn-bg"></span>
+              <span class="btn-label">
+                <svg v-if="loginLoading" class="spinner" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+                </svg>
+                {{ loginLoading ? 'Ingresando...' : 'INGRESAR' }}
+              </span>
+            </button>
+          </form>
+          <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
+        </div>
+      </div>
+    </transition>
+
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.site{font-family:'Barlow',sans-serif;background:#0a0a0a;color:#e8e8e8;overflow-x:hidden}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* NAVBAR */
+.navbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(245,197,0,.12)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.logo-svg{width:130px;height:auto}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:#aaa;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:#f5c500}
+.btn-nav-login{background:#f5c500;border:none;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.85rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:9px 22px;cursor:pointer;transition:background .2s,transform .15s}
+.btn-nav-login:hover{background:#ffd633;transform:translateY(-1px)}
 
-/* ── Layout ── */
-.screen {
-  min-height: 100vh;
-  display: flex;
-  font-family: 'Barlow', sans-serif;
-  background: #0a0a0a;
-  position: relative;
-  overflow: hidden;
-}
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;padding:100px 32px 80px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;pointer-events:none}
+.hero-geo{position:absolute}
+.geo-1{width:520px;height:520px;background:conic-gradient(from 30deg,rgba(245,197,0,.18) 0deg,rgba(255,122,0,.12) 90deg,transparent 90deg);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);top:-160px;right:-120px;animation:rotateSlow 40s linear infinite}
+.geo-2{width:340px;height:340px;background:conic-gradient(from 200deg,rgba(245,197,0,.1) 0deg,transparent 70deg);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);bottom:-80px;left:-60px;animation:rotateSlow 28s linear infinite reverse}
+.geo-3{width:2px;height:80vh;background:linear-gradient(to bottom,transparent,rgba(245,197,0,.25) 50%,transparent);top:10%;left:55%;transform:rotate(12deg)}
+.hero-noise{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:.025}
+@keyframes rotateSlow{to{transform:rotate(360deg)}}
+.hero-content{max-width:1200px;margin:0 auto;position:relative;z-index:1;animation:slideUp .8s cubic-bezier(.16,1,.3,1) both}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
+.hero-eyebrow{display:inline-block;font-size:.7rem;letter-spacing:.35em;text-transform:uppercase;color:#f5c500;margin-bottom:10px}
+.hero-logo-img-wrap{margin-bottom:2px;max-width:850px}
+.hero-logo-img{width:100%;height:auto;display:block;border-radius:4px;filter:drop-shadow(0 0 32px rgba(245,197,0,.3))}
+.accent{color:#f5c500}
+.hero-sub{font-size:1rem;color:#666;line-height:1.7;margin-bottom:40px;letter-spacing:.04em}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.btn-primary{background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.9rem;font-weight:900;letter-spacing:.25em;text-transform:uppercase;padding:15px 36px;border:none;cursor:pointer;text-decoration:none;display:inline-block;transition:background .2s,transform .15s}
+.btn-primary:hover{background:#ffd633;transform:translateY(-2px)}
+.btn-secondary{background:transparent;border:1.5px solid rgba(245,197,0,.5);color:#f5c500;font-family:'Barlow Condensed',sans-serif;font-size:.9rem;font-weight:900;letter-spacing:.25em;text-transform:uppercase;padding:15px 36px;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+.btn-secondary:hover{background:rgba(245,197,0,.08);border-color:#f5c500}
+.hero-badge{position:absolute;bottom:40px;right:32px;display:flex;flex-direction:column;align-items:flex-end;z-index:1}
+.badge-num{font-family:'Barlow Condensed',sans-serif;font-size:3.5rem;font-weight:900;color:#f5c500;line-height:1}
+.badge-txt{font-size:.7rem;color:#555;letter-spacing:.1em;text-transform:uppercase}
 
-/* ── Fondo geométrico ── */
-.bg-layer { position: fixed; inset: 0; pointer-events: none; }
+/* SECTIONS */
+.section-inner{max-width:1200px;margin:0 auto;padding:0 32px}
+.section-label{font-size:.65rem;letter-spacing:.35em;text-transform:uppercase;color:#f5c500;margin-bottom:12px}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;text-transform:uppercase;color:#fff;margin-bottom:12px;line-height:1.1}
+.section-sub{font-size:.9rem;color:#666;max-width:560px;line-height:1.7;margin-bottom:48px}
 
-.hex, .slash { position: absolute; }
+/* SEDE */
+.sede-section{padding:100px 0;background:#0d0d0d;border-top:1px solid rgba(245,197,0,.08);border-bottom:1px solid rgba(245,197,0,.08)}
+.sede-card{display:grid;grid-template-columns:1fr 1fr;gap:40px;background:#111;border:1px solid rgba(245,197,0,.1);padding:40px}
+.sede-info{display:flex;flex-direction:column;gap:24px}
+.sede-detail{display:flex;gap:14px;align-items:flex-start}
+.sd-icon{font-size:1.3rem;margin-top:2px}
+.sede-detail strong{display:block;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:#f5c500;margin-bottom:4px}
+.sede-detail p{font-size:.85rem;color:#888}
+.btn-sede{display:inline-block;margin-top:8px;background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.8rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:12px 28px;text-decoration:none;cursor:pointer;border:none;width:fit-content;transition:background .2s}
+.btn-sede:hover{background:#ffd633}
+.sede-map-placeholder{background:#0d0d0d;border:1px solid #1e1e1e;display:flex;align-items:center;justify-content:center;min-height:220px}
+.map-inner{text-align:center}
+.map-pin{font-size:2.5rem;margin-bottom:12px;display:block}
+.map-inner span{font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;color:#555}
 
-.hex-1 {
-  width: 380px; height: 380px;
-  background: conic-gradient(from 30deg, #f5c500 0deg, #ff7a00 80deg, transparent 80deg);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  top: -120px; left: -100px; opacity: .12;
-  animation: rotateSlow 30s linear infinite;
-}
-.hex-2 {
-  width: 280px; height: 280px;
-  background: conic-gradient(from 200deg, #ff7a00 0deg, #f5c500 90deg, transparent 90deg);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  bottom: -80px; right: 38%; opacity: .10;
-  animation: rotateSlow 22s linear infinite reverse;
-}
-.hex-3 {
-  width: 180px; height: 180px;
-  background: #f5c500;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  top: 40%; right: 8%; opacity: .06;
-  animation: rotateSlow 18s linear infinite;
-}
+/* PLANES */
+.planes-section{padding:100px 0}
+.plans-loading{display:flex;align-items:center;gap:16px;padding:48px 0;color:#555;font-size:.85rem;letter-spacing:.1em}
+.loading-spinner{width:20px;height:20px;border:2px solid #222;border-top-color:#f5c500;border-radius:50%;animation:spin .7s linear infinite}
+.plans-error{padding:20px;background:rgba(220,50,30,.08);border:1px solid rgba(220,50,30,.3);color:#e05a45;font-size:.82rem;margin-bottom:24px}
+.planes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.plan-card{background:#111;border:1px solid #1e1e1e;padding:32px 28px;display:flex;flex-direction:column;gap:16px;position:relative;transition:border-color .25s,transform .2s}
+.plan-card:hover{border-color:rgba(245,197,0,.3);transform:translateY(-4px)}
+.plan-card.featured{border-color:#f5c500;background:linear-gradient(145deg,#141200,#111)}
+.plan-badge{position:absolute;top:-12px;left:24px;background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:4px 12px}
+.plan-tag-small{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:#555}
+.plan-name{font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:900;text-transform:uppercase;color:#fff}
+.plan-price{display:flex;align-items:baseline;gap:4px;color:#f5c500}
+.price-currency{font-size:.9rem;font-weight:600}
+.price-num{font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:900;line-height:1}
+.plan-perks{list-style:none;display:flex;flex-direction:column;gap:8px;flex:1}
+.plan-perks li{font-size:.8rem;color:#888;display:flex;gap:8px;align-items:flex-start}
+.perk-check{color:#f5c500;font-weight:700;flex-shrink:0}
+.btn-plan{background:transparent;border:1px solid rgba(245,197,0,.4);color:#f5c500;font-family:'Barlow Condensed',sans-serif;font-size:.8rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:11px;cursor:pointer;margin-top:auto;transition:background .25s,border-color .25s,color .25s}
+.btn-plan:hover,.plan-card.featured .btn-plan{background:#f5c500;border-color:#f5c500;color:#0a0a0a}
+.planes-note{font-size:.7rem;color:#444;margin-top:24px;text-align:center}
 
-.slash-1 {
-  width: 3px; height: 60vh;
-  background: linear-gradient(to bottom, transparent, #f5c500 50%, transparent);
-  top: 20%; left: 37.5%; opacity: .18;
-  transform: rotate(15deg);
-}
-.slash-2 {
-  width: 2px; height: 40vh;
-  background: linear-gradient(to bottom, transparent, #ff7a00 50%, transparent);
-  top: 10%; left: 39%; opacity: .12;
-  transform: rotate(15deg);
-}
-.slash-3 {
-  width: 2px; height: 30vh;
-  background: linear-gradient(to bottom, transparent, #f5c500 50%, transparent);
-  bottom: 5%; left: 35%; opacity: .10;
-  transform: rotate(15deg);
-}
+/* DISCIPLINAS */
+.disciplinas-section{padding:100px 0;background:#0d0d0d;border-top:1px solid rgba(245,197,0,.08);border-bottom:1px solid rgba(245,197,0,.08)}
+.disc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;background:#111;border:1px solid #1a1a1a}
+.disc-card{background:#0d0d0d;display:flex;flex-direction:column;overflow:hidden;transition:background .2s}
+.disc-card:hover{background:#111}
+.disc-card:hover .disc-img{transform:scale(1.05)}
+.disc-img-wrap{position:relative;height:200px;overflow:hidden}
+.disc-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;filter:brightness(.65) saturate(.8)}
+.disc-img-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,#0d0d0d 100%);pointer-events:none}
+.disc-body{padding:24px 28px 28px;flex:1}
+.disc-line{width:32px;height:2px;background:#f5c500;margin-bottom:16px}
+.disc-name{font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:900;text-transform:uppercase;color:#fff;margin-bottom:10px}
+.disc-desc{font-size:.82rem;color:#666;line-height:1.65}
 
-.noise {
-  position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: .025;
-}
+/* PLATAFORMA */
+.plataforma-section{padding:100px 0}
+.plat-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+.benefits-list{display:flex;flex-direction:column;gap:24px;margin-bottom:36px}
+.benefit-item{display:flex;gap:16px;align-items:flex-start}
+.benefit-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
+.benefit-item strong{display:block;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#f5c500;margin-bottom:4px}
+.benefit-item p{font-size:.82rem;color:#666;line-height:1.6}
 
-@keyframes rotateSlow { to { transform: rotate(360deg); } }
+/* Mock */
+.screen-mock{background:#111;border:1px solid rgba(245,197,0,.15);border-radius:4px;box-shadow:0 40px 80px rgba(0,0,0,.6),0 0 40px rgba(245,197,0,.06);overflow:hidden}
+.mock-bar{background:#0d0d0d;padding:8px 12px;display:flex;gap:6px;align-items:center;border-bottom:1px solid #1a1a1a}
+.mock-bar span{width:8px;height:8px;border-radius:50%;background:#222}
+.mock-bar span:first-child{background:rgba(245,197,0,.4)}
+.mock-content{padding:0}
+.mock-layout{display:flex;min-height:480px}
+.mock-sidebar{width:130px;flex-shrink:0;background:#0a0a0a;border-right:1px solid #1a1a1a;padding:16px 12px;display:flex;flex-direction:column;gap:12px}
+.mock-logo-small{font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#f5c500;font-size:.9rem;line-height:1.1;margin-bottom:4px}
+.mock-logo-small span{color:#fff}
+.mock-nav-item{display:flex;align-items:center;gap:6px;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#555;padding:6px 8px;cursor:pointer}
+.mock-nav-item.active{background:rgba(245,197,0,.08);color:#f5c500;border-left:2px solid #f5c500}
+.nav-icon{font-size:.8rem;flex-shrink:0}
+.mock-plan-btn{display:flex;align-items:center;gap:8px;background:rgba(245,197,0,.1);border:1px solid rgba(245,197,0,.25);padding:8px;cursor:pointer}
+.mock-plan-btn-text strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:900;color:#f5c500;text-transform:uppercase;line-height:1.1}
+.mock-plan-btn-text small{font-size:.55rem;color:#555}
+.mock-user-pill{margin-top:auto;display:flex;align-items:center;gap:6px;background:#111;border:1px solid #1e1e1e;padding:6px 8px}
+.mock-user-num{width:20px;height:20px;background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mock-user-info span{display:block;font-size:.58rem;color:#ccc}
+.mock-user-info small{font-size:.52rem;color:#444}
+.mock-main{flex:1;padding:16px;overflow:hidden;display:flex;flex-direction:column;gap:12px;position:relative}
+.mock-welcome{font-size:.5rem;letter-spacing:.25em;color:#f5c500;text-transform:uppercase}
+.mock-uid{font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;line-height:1}
+.mock-uid-tag{color:#f5c500;font-size:1rem}
+.mock-counters{display:flex;gap:8px;position:absolute;top:44px;right:16px}
+.mock-counter-box{border:1px solid #1e1e1e;padding:6px 12px;text-align:center}
+.mock-counter-box.active-box{border-color:#f5c500;background:rgba(245,197,0,.06)}
+.mock-counter-num{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:900;color:#fff}
+.mock-counter-lbl{font-size:.45rem;letter-spacing:.15em;color:#555;text-transform:uppercase}
+.mock-plan-active{background:#0d0d0d;border-left:3px solid #f5c500;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.mock-plan-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mock-bolt{font-size:.8rem}
+.mock-badge-active{background:rgba(245,197,0,.15);color:#f5c500;font-size:.5rem;font-weight:700;letter-spacing:.2em;padding:2px 8px;text-transform:uppercase}
+.mock-plan-type{font-size:.55rem;color:#555;letter-spacing:.15em;text-transform:uppercase;margin-left:auto}
+.mock-plan-desc{font-size:.6rem;color:#888}
+.mock-plan-dates{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mock-plan-dates>div{display:flex;flex-direction:column;gap:2px}
+.mock-plan-dates small{font-size:.48rem;letter-spacing:.15em;color:#555;text-transform:uppercase}
+.mock-plan-dates strong{font-size:.65rem;color:#ccc}
+.mock-plan-price-tag strong{font-size:.7rem!important}
+.mock-arrow{color:#333;font-size:.7rem}
+.mock-calendar{background:#0a0a0a;border:1px solid #1a1a1a;padding:10px}
+.mock-cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mock-cal-header strong{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;font-weight:900;letter-spacing:.15em;color:#ccc}
+.mock-cal-nav{font-size:.8rem;color:#444;cursor:pointer;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border:1px solid #1e1e1e}
+.mock-cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.mock-cal-dow{text-align:center;font-size:.45rem;letter-spacing:.1em;color:#444;text-transform:uppercase;padding:2px 0}
+.mock-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mock-cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#555}
+.mock-cal-cell.avail{background:rgba(30,80,40,.6);color:#6dbf7e;font-weight:600}
+.mock-cal-cell.today{background:#f5c500;color:#0a0a0a;font-weight:900}
+.mock-cal-cell.muted{color:#2e2e2e}
+.mock-cal-legend{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.mock-cal-legend span{display:flex;align-items:center;gap:4px;font-size:.48rem;color:#444;letter-spacing:.08em}
+.legend-dot{width:7px;height:7px;display:inline-block}
+.legend-dot.avail{background:rgba(30,80,40,.6)}
+.legend-dot.venc{background:rgba(80,30,20,.6)}
+.legend-dot.noacc{background:#1a1a1a;border:1px solid #2e2e2e}
+.mock-table-section{}
+.mock-table-title{font-size:.52rem;letter-spacing:.2em;color:#f5c500;text-transform:uppercase;margin-bottom:6px}
+.mock-table-row{display:grid;grid-template-columns:28px 1fr 60px 60px;gap:6px;padding:5px 6px;font-size:.58rem;color:#888;align-items:center;border-bottom:1px solid #111}
+.mock-table-row.header-row{font-size:.48rem;letter-spacing:.15em;color:#333;text-transform:uppercase;border-bottom:1px solid #1a1a1a}
+.mock-id-badge{background:#111;border:1px solid #2a2a2a;color:#555;font-size:.5rem;font-weight:700;padding:2px 4px;text-align:center}
+.mock-badge-estado{font-size:.48rem;font-weight:700;letter-spacing:.1em;padding:2px 6px;text-transform:uppercase}
+.mock-badge-estado.active{color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+.mock-mp-btn{background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:900;letter-spacing:.15em;text-align:center;padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-transform:uppercase}
+.mp-logo{width:18px;height:18px;flex-shrink:0}
 
-/* ── Brand Panel ── */
-.brand-panel {
-  width: 42%;
-  min-height: 100vh;
-  background: linear-gradient(145deg, #111 0%, #0a0a0a 60%);
-  border-right: 1px solid rgba(245,197,0,.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 48px;
-  position: relative;
-}
+/* FOOTER */
+.footer{background:#060606;border-top:1px solid rgba(245,197,0,.1);padding:48px 0 24px}
+.footer-inner{max-width:1200px;margin:0 auto;padding:0 32px 32px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:32px;border-bottom:1px solid #111}
+.footer-logo p{font-size:.75rem;color:#444;margin-top:10px;line-height:1.6}
+.footer-links{display:flex;flex-direction:column;gap:12px}
+.footer-links a{color:#555;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:#f5c500}
+.footer-copy{max-width:1200px;margin:0 auto;padding:20px 32px 0;font-size:.68rem;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
 
-.brand-panel::after {
-  content: '';
-  position: absolute;
-  top: 0; right: -1px;
-  width: 1px; height: 100%;
-  background: linear-gradient(to bottom, transparent, #f5c500 40%, #ff7a00 60%, transparent);
-}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-fade-enter-active,.modal-fade-leave-active{transition:opacity .3s}
+.modal-fade-enter-from,.modal-fade-leave-to{opacity:0}
+.modal-card{position:relative;width:100%;max-width:420px;background:#111;border:1px solid rgba(245,197,0,.15);box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 60px rgba(245,197,0,.05);padding:44px 40px 36px;animation:cardIn .4s cubic-bezier(.16,1,.3,1) both}
+@keyframes cardIn{from{opacity:0;transform:scale(.95) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:#444;font-size:1rem;cursor:pointer;transition:color .2s}
+.modal-close:hover{color:#f5c500}
+.modal-brand{text-align:center;margin-bottom:4px}
+.modal-header{text-align:center;margin-bottom:32px}
+.bolt-icon{font-size:1.8rem;margin-bottom:8px;filter:drop-shadow(0 0 12px #f5c500);display:block;animation:boltPulse 2.5s ease-in-out infinite}
+@keyframes boltPulse{0%,100%{filter:drop-shadow(0 0 8px #f5c500)}50%{filter:drop-shadow(0 0 22px #f5c500) drop-shadow(0 0 40px rgba(245,197,0,.4))}}
+.modal-header h1{font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#fff;margin-bottom:4px}
+.modal-header p{font-size:.74rem;color:#555;letter-spacing:.05em}
+.login-form{display:flex;flex-direction:column;gap:18px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-family:'Barlow Condensed',sans-serif;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:#555;font-weight:700;transition:color .2s}
+.field.filled label,.field:focus-within label{color:#f5c500}
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-icon{position:absolute;left:12px;width:15px;height:15px;color:#333;pointer-events:none;transition:color .2s}
+.field:focus-within .input-icon{color:#f5c500}
+.input-wrap input{width:100%;background:#0d0d0d;border:1px solid #1e1e1e;color:#f0f0f0;font-family:'Barlow',sans-serif;font-size:.88rem;padding:12px 14px 12px 38px;outline:none;transition:border-color .25s,box-shadow .25s}
+.input-wrap input::placeholder{color:#2e2e2e}
+.input-wrap input:focus{border-color:#f5c500;background:#0f0e09;box-shadow:0 0 0 3px rgba(245,197,0,.07)}
+.eye-btn{position:absolute;right:10px;background:none;border:none;cursor:pointer;width:20px;height:20px;color:#333;padding:0;display:flex;align-items:center;justify-content:center;transition:color .2s}
+.eye-btn:hover{color:#f5c500}
+.eye-btn svg{width:15px;height:15px}
+.error-box{background:rgba(220,50,30,.08);border:1px solid rgba(220,50,30,.3);color:#e05a45;font-size:.76rem;padding:9px 12px;display:flex;align-items:center;gap:8px}
+.shake-enter-active{animation:shake .4s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+.btn-login{position:relative;width:100%;padding:14px;background:transparent;border:1.5px solid #f5c500;color:#f5c500;font-family:'Barlow Condensed',sans-serif;font-size:.9rem;font-weight:900;letter-spacing:.3em;text-transform:uppercase;cursor:pointer;overflow:hidden;margin-top:4px;transition:color .3s;display:flex;align-items:center;justify-content:center}
+.btn-bg{position:absolute;inset:0;background:#f5c500;transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.btn-login:hover .btn-bg,.btn-login:focus .btn-bg{transform:scaleX(1)}
+.btn-login:hover,.btn-login:focus{color:#0a0a0a;outline:none}
+.btn-login:disabled{opacity:.5;cursor:not-allowed}
+.btn-label{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
+.spinner{width:14px;height:14px;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-footer-note{text-align:center;font-size:.62rem;color:#282828;letter-spacing:.1em;text-transform:uppercase;margin-top:24px}
 
-.brand-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 44px;
-  max-width: 340px;
-}
-
-.logo-wrap {
-  animation: logoIn .8s cubic-bezier(.16,1,.3,1) both;
-}
-
-.logo-svg {
-  width: 240px;
-  height: auto;
-  filter: drop-shadow(0 0 28px rgba(245,197,0,.25));
-}
-
-@keyframes logoIn {
-  from { opacity: 0; transform: translateX(-30px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-.brand-tagline {
-  animation: logoIn .8s .15s cubic-bezier(.16,1,.3,1) both;
-}
-
-.tag-line {
-  display: block;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .65rem; letter-spacing: .35em;
-  text-transform: uppercase; color: #f5c500;
-  margin-bottom: 10px;
-}
-
-.brand-tagline h2 {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 3.4rem; font-weight: 900;
-  line-height: 1; letter-spacing: -.01em;
-  color: #fff;
-  text-transform: uppercase;
-}
-
-.stats-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  animation: logoIn .8s .3s cubic-bezier(.16,1,.3,1) both;
-}
-
-.stat { display: flex; flex-direction: column; gap: 2px; }
-.stat-num {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.7rem; font-weight: 900;
-  color: #f5c500; line-height: 1;
-}
-.stat-label {
-  font-size: .65rem; letter-spacing: .15em;
-  text-transform: uppercase; color: #555;
-}
-.stat-divider {
-  width: 1px; height: 36px;
-  background: linear-gradient(to bottom, transparent, #333, transparent);
-}
-
-/* ── Login Panel ── */
-.login-panel {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-}
-
-.login-card {
-  position: relative;
-  width: 100%; max-width: 420px;
-  background: #111;
-  border: 1px solid rgba(245,197,0,.12);
-  box-shadow: 0 40px 100px rgba(0,0,0,.8), 0 0 60px rgba(245,197,0,.04);
-  padding: 48px 44px 40px;
-  animation: cardIn .7s .1s cubic-bezier(.16,1,.3,1) both;
-}
-
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Esquinas decorativas */
-.corner {
-  position: absolute;
-  width: 18px; height: 18px;
-  border-color: #f5c500; border-style: solid;
-}
-.corner.tl { top: 10px; left: 10px; border-width: 1.5px 0 0 1.5px; }
-.corner.br { bottom: 10px; right: 10px; border-width: 0 1.5px 1.5px 0; }
-
-/* ── Header login ── */
-.login-header {
-  text-align: center;
-  margin-bottom: 36px;
-}
-
-.bolt-icon {
-  font-size: 2rem; margin-bottom: 10px;
-  filter: drop-shadow(0 0 12px #f5c500);
-  display: block;
-  animation: boltPulse 2.5s ease-in-out infinite;
-}
-
-@keyframes boltPulse {
-  0%,100% { filter: drop-shadow(0 0 8px #f5c500); }
-  50%      { filter: drop-shadow(0 0 22px #f5c500) drop-shadow(0 0 40px rgba(245,197,0,.4)); }
-}
-
-.login-header h1 {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.8rem; font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: #fff; margin-bottom: 6px;
-}
-
-.login-header p {
-  font-size: .77rem; color: #555;
-  letter-spacing: .05em;
-}
-
-/* ── Formulario ── */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.field label {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .65rem; letter-spacing: .3em;
-  text-transform: uppercase;
-  color: #666; font-weight: 700;
-  transition: color .2s;
-}
-
-.field.filled label,
-.field:focus-within label {
-  color: #f5c500;
-}
-
-.input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 13px;
-  width: 16px; height: 16px;
-  color: #444;
-  pointer-events: none;
-  transition: color .2s;
-}
-
-.field:focus-within .input-icon { color: #f5c500; }
-
-.input-wrap input {
-  width: 100%;
-  background: #0d0d0d;
-  border: 1px solid #222;
-  color: #f0f0f0;
-  font-family: 'Barlow', sans-serif;
-  font-size: .9rem; font-weight: 400;
-  padding: 13px 14px 13px 40px;
-  outline: none;
-  transition: border-color .25s, background .25s, box-shadow .25s;
-}
-
-.input-wrap input::placeholder { color: #333; }
-
-.input-wrap input:focus {
-  border-color: #f5c500;
-  background: #0f0e09;
-  box-shadow: 0 0 0 3px rgba(245,197,0,.07), inset 0 1px 0 rgba(245,197,0,.06);
-}
-
-.eye-btn {
-  position: absolute; right: 12px;
-  background: none; border: none; cursor: pointer;
-  width: 20px; height: 20px;
-  color: #444; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: color .2s;
-}
-.eye-btn:hover { color: #f5c500; }
-.eye-btn svg { width: 16px; height: 16px; }
-
-/* ── Error ── */
-.error-box {
-  background: rgba(220, 50, 30, .08);
-  border: 1px solid rgba(220, 50, 30, .3);
-  color: #e05a45;
-  font-size: .78rem;
-  padding: 10px 14px;
-  display: flex; align-items: center; gap: 8px;
-  letter-spacing: .03em;
-}
-
-.shake-enter-active { animation: shake .4s cubic-bezier(.36,.07,.19,.97); }
-@keyframes shake {
-  10%, 90% { transform: translateX(-2px); }
-  20%, 80% { transform: translateX(3px); }
-  30%, 50%, 70% { transform: translateX(-4px); }
-  40%, 60% { transform: translateX(4px); }
-}
-
-/* ── Botón login ── */
-.btn-login {
-  position: relative;
-  width: 100%;
-  padding: 15px;
-  background: transparent;
-  border: 1.5px solid #f5c500;
-  color: #f5c500;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .95rem; font-weight: 900;
-  letter-spacing: .35em; text-transform: uppercase;
-  cursor: pointer;
-  overflow: hidden;
-  margin-top: 4px;
-  transition: color .3s;
-  display: flex; align-items: center; justify-content: center;
-}
-
-.btn-bg {
-  position: absolute; inset: 0;
-  background: #f5c500;
-  transform: scaleX(0); transform-origin: left;
-  transition: transform .4s cubic-bezier(.4,0,.2,1);
-}
-
-.btn-login:hover .btn-bg,
-.btn-login:focus .btn-bg { transform: scaleX(1); }
-.btn-login:hover,
-.btn-login:focus { color: #0a0a0a; outline: none; }
-.btn-login:disabled { opacity: .5; cursor: not-allowed; }
-
-.btn-label {
-  position: relative; z-index: 1;
-  display: flex; align-items: center; gap: 10px;
-}
-
-.spinner {
-  width: 16px; height: 16px;
-  animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Footer ── */
-.footer-note {
-  text-align: center;
-  font-size: .65rem;
-  color: #2e2e2e;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  margin-top: 28px;
-}
-
-/* ── Responsive ── */
-@media (max-width: 820px) {
-  .screen { flex-direction: column; }
-  .brand-panel {
-    width: 100%; min-height: auto;
-    padding: 48px 32px 36px;
-    border-right: none;
-    border-bottom: 1px solid rgba(245,197,0,.15);
-  }
-  .brand-inner { align-items: center; text-align: center; gap: 28px; }
-  .brand-panel::after { display: none; }
-  .stats-row { justify-content: center; }
-  .brand-tagline h2 { font-size: 2.6rem; }
-  .login-card { padding: 36px 26px 30px; }
-}
+/* RESPONSIVE */
+@media(max-width:1000px){.plat-inner{grid-template-columns:1fr}}
+@media(max-width:900px){.sede-card{grid-template-columns:1fr}.hero-badge{display:none}.nav-links a{display:none}}
+@media(max-width:600px){.hero-logo-img-wrap{max-width:300px}.planes-grid{grid-template-columns:1fr 1fr}.disc-grid{grid-template-columns:1fr}.modal-card{padding:32px 24px 28px}.mock-counters{display:none}}
 </style>

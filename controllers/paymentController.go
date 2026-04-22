@@ -13,9 +13,12 @@ import (
 
 func CreatePreference(c *gin.Context) {
 	var requestData struct {
-		Amount   float64 `json:"amount"`
-		Username string  `json:"username"`
-		PlanType string  `json:"planType"`
+		Amount    float64 `json:"amount"`
+		Username  string  `json:"username"`
+		PlanType  string  `json:"planType"`
+		Quantity  int     `json:"quantity"`
+		DateStart string  `json:"dateStart"`
+		DateEnd   string  `json:"dateEnd"`
 	}
 
 	if err := c.ShouldBindJSON(&requestData); err != nil {
@@ -23,7 +26,6 @@ func CreatePreference(c *gin.Context) {
 		return
 	}
 
-	// ✅ Leer desde variable de entorno
 	accessToken := os.Getenv("MP_ACCESS_TOKEN")
 	if accessToken == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "MP_ACCESS_TOKEN not set"})
@@ -39,10 +41,20 @@ func CreatePreference(c *gin.Context) {
 
 	client := preference.NewClient(cfg)
 
+	// Título enriquecido con fechas
+	titulo := fmt.Sprintf(
+		"RayoBox · %s x%d · %s · Del %s al %s",
+		requestData.PlanType,
+		requestData.Quantity,
+		requestData.Username,
+		requestData.DateStart,
+		requestData.DateEnd,
+	)
+
 	request := preference.Request{
 		Items: []preference.ItemRequest{
 			{
-				Title:     fmt.Sprintf("RayoBox · %s · Usuario: %s", requestData.PlanType, requestData.Username),
+				Title:     titulo,
 				Quantity:  1,
 				UnitPrice: requestData.Amount,
 			},

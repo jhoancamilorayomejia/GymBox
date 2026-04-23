@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 const router   = useRouter()
 const username = localStorage.getItem('username') || 'Cliente'
-const id       = localStorage.getItem('id') || ''
+//const id       = localStorage.getItem('id') || ''
 
 const planes      = ref([])
 const loading     = ref(true)
@@ -117,15 +117,27 @@ const descripcionRango = computed(() => {
 
 const obtenerPricePlans = async () => {
   try {
-    const res = await fetch('/api/customer-priceplans')
-    if (!res.ok) throw new Error()
+    const token = localStorage.getItem('token')
+
+    const res = await fetch('/api/customer-priceplans', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (!res.ok) throw new Error('Error al obtener planes')
+
     const data = await res.json()
+
     pricePlans.value = [...data].sort((a, b) => {
       const ia = ORDEN_PLANES.indexOf(a.typeplan)
       const ib = ORDEN_PLANES.indexOf(b.typeplan)
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
     })
-  } catch (err) { console.error(err) }
+
+  } catch (err) {
+    console.error('Error cargando pricePlans:', err)
+  }
 }
 
 const abrirModal = async () => {
@@ -395,7 +407,8 @@ onMounted(() => { obtenerPlanes() })
             <div class="user-avatar">{{ username.charAt(0).toUpperCase() }}</div>
             <div class="user-info">
               <span class="user-name">{{ username }}</span>
-              <span class="user-role">ID #{{ id }} · Miembro</span>
+              <span class="user-role">Cliente</span>
+              <!--span class="user-role">ID #{{ id }} · Miembro</span-->
             </div>
           </div>
           <button class="logout-btn" @click="cerrarSesion" title="Cerrar sesión">
@@ -409,7 +422,8 @@ onMounted(() => { obtenerPlanes() })
         <header class="page-header">
           <div class="page-title">
             <span class="page-eyebrow">⚡ Bienvenido de vuelta</span>
-            <h1>{{ username }} <span class="id-tag">#{{ id }}</span></h1>
+            <h1>{{ username }} </h1>
+            <!--span class="id-tag">#{{ id }}</span-->
           </div>
           <div class="header-meta">
             <div class="stat-pill"><span class="stat-val">{{ planes.length }}</span><span class="stat-lbl">Total</span></div>
@@ -845,7 +859,7 @@ onMounted(() => { obtenerPlanes() })
 .ley-item { display: flex; align-items: center; gap: 8px; font-size: .7rem; color: #666; }
 .ley-dot { width: 11px; height: 11px; flex-shrink: 0; border-radius: 2px; }
 .dot-activo      { background: rgba(74,222,128,.25); border: 1px solid rgba(74,222,128,.6); }
-.dot-vencido-cal { background: rgba(100,100,100,.25); border: 1px solid rgba(100,100,100,.5); }
+.dot-vencido-cal { background: rgba(102, 28, 28, 0.25); border: 1px solid rgba(100,100,100,.5); }
 .dot-ninguno     { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); }
 
 .cal-card { background: #111; border: 1px solid rgba(245,197,0,.12); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; animation: fadeUp .45s .06s cubic-bezier(.16,1,.3,1) both; }

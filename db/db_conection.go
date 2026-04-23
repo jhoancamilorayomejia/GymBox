@@ -18,9 +18,9 @@ func ConnectDB() (*sql.DB, error) {
 		dsn = "host=localhost user=postgres password=tu_password dbname=rayobox sslmode=disable"
 		log.Println("⚠️  DATABASE_URL no encontrada, usando conexión local")
 	} else {
-		// ✅ Railway requiere SSL — agregarlo si no viene en la URL
+		// ✅ Railway Postgres sin SSL
 		if !strings.Contains(dsn, "sslmode") {
-			dsn += "?sslmode=require"
+			dsn += "?sslmode=disable"
 		}
 	}
 

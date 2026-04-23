@@ -30,6 +30,7 @@ RUN go mod download
 COPY main.go ./
 COPY controllers/ ./controllers/
 COPY db/ ./db/
+COPY models/ ./models/
 
 # Compilar el binario
 RUN go build -o server .

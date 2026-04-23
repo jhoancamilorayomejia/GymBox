@@ -22,12 +22,16 @@ ENV VITE_MP_PUBLIC_KEY=$VITE_MP_PUBLIC_KEY
 RUN npm run build
 
 # ── Etapa 2: Build de Go ──────────────────────────────────────────
-FROM golang:1.25rc2-alpine AS go-build
+FROM golang:alpine AS go-build
 
 WORKDIR /app
 
 # Copiar módulos de Go
 COPY go.mod go.sum ./
+
+# ✅ Esto ignora la restricción de versión del go.mod
+ENV GOTOOLCHAIN=off
+
 RUN go mod download
 
 # Copiar código fuente de Go

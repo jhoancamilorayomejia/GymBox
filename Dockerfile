@@ -1,4 +1,4 @@
-# ── Etapa 1: Build de Vue ─────────────────────────────────────────
+# ── Etapa 1: Build de Vue 
 FROM node:22-alpine AS vue-build
 
 WORKDIR /app
@@ -15,7 +15,7 @@ ENV VITE_MP_PUBLIC_KEY=$VITE_MP_PUBLIC_KEY
 
 RUN npm run build
 
-# ── Etapa 2: Build de Go ──────────────────────────────────────────
+# ── Etapa 2: Build de Go 
 FROM golang:alpine AS go-build
 
 WORKDIR /app
@@ -32,7 +32,7 @@ COPY models/ ./models/
 
 RUN go build -o server .
 
-# ── Etapa 3: Imagen final ─────────────────────────────────────────
+# ── Etapa 3: 
 FROM alpine:latest
 
 WORKDIR /app

@@ -48,17 +48,15 @@ func AuthMiddleware() gin.HandlerFunc {
 func main() {
 	_, err := db.ConnectDB()
 	if err != nil {
-		log.Println("❌ Error conectando a la DB:", err)
-	} else {
-		log.Println("✅ DB conectada")
+		log.Fatal("❌ Error conectando a la DB:", err)
 	}
 
-	// Crear router
 	r := gin.Default()
 
+	// ✅ CORS — en producción usa tu dominio de Railway
 	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
 	if allowedOrigin == "" {
-		allowedOrigin = "*"
+		allowedOrigin = "*" // fallback para desarrollo local
 	}
 
 	r.Use(func(c *gin.Context) {
@@ -111,6 +109,11 @@ func main() {
 	//r.PUT("/api/users/update-password/:id", AuthMiddleware(), controllers.UpdatePassword)
 	r.PUT("/api/users/update-password-by-username", AuthMiddleware(), controllers.UpdatePasswordByUsername)
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)
+
+	// Todo lo que no sea una ruta real del backend → index.html (Vue Router)
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./dist/index.html")
+	})
 
 	// ── Servir frontend Vue (dist/) ────────────────────────────────
 	r.Static("/assets", "./dist/assets")

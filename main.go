@@ -54,11 +54,22 @@ func main() {
 	// Crear router
 	r := gin.Default()
 
-	// ✅ CORS — en producción usa tu dominio de Railway
 	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
 	if allowedOrigin == "" {
-		allowedOrigin = "*" // fallback para desarrollo local
+		allowedOrigin = "*"
 	}
+
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 
 	// ✅ Ruta de login Publica
 	r.POST("/api/login", controllers.Login)

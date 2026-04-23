@@ -48,7 +48,9 @@ func AuthMiddleware() gin.HandlerFunc {
 func main() {
 	_, err := db.ConnectDB()
 	if err != nil {
-		log.Fatal("❌ Error conectando a la DB:", err)
+		log.Println("❌ Error conectando a la DB:", err)
+	} else {
+		log.Println("✅ DB conectada")
 	}
 
 	// Crear router

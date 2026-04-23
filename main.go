@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -53,18 +54,11 @@ func main() {
 	// Crear router
 	r := gin.Default()
 
-	// CORS (permite conexión con Vue)
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	// ✅ CORS — en producción usa tu dominio de Railway
+	allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+	if allowedOrigin == "" {
+		allowedOrigin = "*" // fallback para desarrollo local
+	}
 
 	// ✅ Ruta de login Publica
 	r.POST("/api/login", controllers.Login)
@@ -103,14 +97,21 @@ func main() {
 	// Con middleware de autenticación:
 	//r.PUT("/api/users/update-password/:id", AuthMiddleware(), controllers.UpdatePassword)
 	r.PUT("/api/users/update-password-by-username", AuthMiddleware(), controllers.UpdatePasswordByUsername)
-
-	//
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)
 
-	log.Println("🚀 Servidor corriendo en http://localhost:8080")
+	// ── Servir frontend Vue (dist/) ────────────────────────────────
+	r.Static("/assets", "./dist/assets")
+	r.StaticFile("/favicon.ico", "./dist/favicon.ico")
 
-	// Levantar servidor
-	if err := r.Run(":8080"); err != nil {
+	// ✅ Puerto dinámico — Railway asigna el puerto via variable PORT
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback para desarrollo local
+	}
+
+	log.Println("🚀 Servidor corriendo en puerto", port)
+
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal("❌ Error iniciando servidor:", err)
 	}
 }

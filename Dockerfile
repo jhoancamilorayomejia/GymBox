@@ -20,6 +20,9 @@ FROM golang:alpine AS go-build
 
 WORKDIR /app
 
+# ✅ Instalar git (necesario para go mod download)
+RUN apk --no-cache add git
+
 ENV GOTOOLCHAIN=local
 
 COPY go.mod go.sum ./

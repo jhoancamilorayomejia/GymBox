@@ -20,10 +20,14 @@ FROM golang:alpine AS go-build
 
 WORKDIR /app
 
-# ✅ Instalar git (necesario para go mod download)
 RUN apk --no-cache add git
 
 ENV GOTOOLCHAIN=local
+ENV GONOSUMCHECK=*
+ENV GOFLAGS=-mod=mod
+ENV GIT_TERMINAL_PROMPT=0
+ENV GOPRIVATE=""
+ENV GONOSUMDB=*
 
 COPY go.mod go.sum ./
 RUN go mod download

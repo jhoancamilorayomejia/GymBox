@@ -105,7 +105,7 @@ func main() {
 	r.PUT("/api/update-customers/:id", AuthMiddleware(), controllers.UpdateCustomer)
 	r.DELETE("/api/delete-customers/:id", AuthMiddleware(), controllers.DeleteCustomer)
 
-	// Con middleware de autenticación:
+	// middleware de autenticación:
 	//r.PUT("/api/users/update-password/:id", AuthMiddleware(), controllers.UpdatePassword)
 	r.PUT("/api/users/update-password-by-username", AuthMiddleware(), controllers.UpdatePasswordByUsername)
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)

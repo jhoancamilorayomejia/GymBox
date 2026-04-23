@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -11,14 +12,16 @@ import (
 var DB *sql.DB
 
 func ConnectDB() (*sql.DB, error) {
-	// ✅ Railway provee DATABASE_URL automáticamente
-	// En desarrollo puedes setearla en un archivo .env o directamente
 	dsn := os.Getenv("DATABASE_URL")
 
 	if dsn == "" {
-		// Fallback para desarrollo local
 		dsn = "host=localhost user=postgres password=tu_password dbname=rayobox sslmode=disable"
 		log.Println("⚠️  DATABASE_URL no encontrada, usando conexión local")
+	} else {
+		// ✅ Railway requiere SSL — agregarlo si no viene en la URL
+		if !strings.Contains(dsn, "sslmode") {
+			dsn += "?sslmode=require"
+		}
 	}
 
 	var err error

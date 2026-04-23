@@ -196,3 +196,49 @@ func UpdateUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Usuario actualizado correctamente"})
 }
+
+// ✅ Simple: busca por username en tabla users y actualiza password
+/*func UpdatePasswordByUsername(c *gin.Context) {
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+		return
+	}
+
+	if body.Username == "" || body.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username y contraseña son requeridos"})
+		return
+	}
+
+	// 🔐 Encriptar directamente
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al encriptar la contraseña"})
+		return
+	}
+
+	// ✅ UPDATE directo en tabla users donde username coincide
+	result, err := db.DB.Exec(
+		"UPDATE users SET password = $1 WHERE username = $2",
+		string(hashedPassword),
+		body.Username,
+	)
+	if err != nil {
+		fmt.Println("❌ Error SQL:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Contraseña actualizada correctamente"})
+}
+*/

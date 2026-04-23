@@ -103,6 +103,47 @@ const benefits = [
   { icon: '💳', title: 'Pago 100% digital',              desc: 'Abonás tu plan de forma segura con Mercado Pago desde la app o web. Sin filas, sin efectivo.' },
   { icon: '⚡', title: 'Gestión desde cualquier lugar',  desc: 'Accedé a tu historial, renovaciones y estado de membresía desde donde estés, 24/7.' }
 ]
+
+const showRegisterModal = ref(false)
+const regName      = ref('')
+const regLastName  = ref('')
+const regCedula    = ref('')
+const regPhone     = ref('')
+const regPassword  = ref('')
+const regPassword2 = ref('')
+const regError     = ref('')
+const regLoading   = ref(false)
+const showRegPassword = ref(false)
+
+const registerCustomer = async () => {
+  regError.value = ''
+  if (regPassword.value !== regPassword2.value) {
+    regError.value = 'Las contraseñas no coinciden'
+    return
+  }
+  regLoading.value = true
+  try {
+    const res = await fetch('/api/new-public-customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: regName.value,
+        lastname: regLastName.value,
+        cedula: regCedula.value,
+        phone: regPhone.value,
+        password: regPassword.value
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Error al registrarse')
+    showRegisterModal.value = false
+    showModal.value = true  // abre login tras registro exitoso
+  } catch (err) {
+    regError.value = err.message
+  } finally {
+    regLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -146,6 +187,7 @@ const benefits = [
         <div class="hero-ctas">
           <a href="#planes" class="btn-primary">Ver planes</a>
           <button class="btn-secondary" @click="showModal = true">Iniciar Sesión</button>
+          <button class="btn-secondary" @click="showRegisterModal = true">Registrarse</button>
         </div>
       </div>
       <div class="hero-badge">
@@ -201,7 +243,7 @@ const benefits = [
             <ul class="plan-perks">
               <li v-for="perk in plan.perks" :key="perk"><span class="perk-check">✓</span> {{ perk }}</li>
             </ul>
-            <button class="btn-plan" @click="showModal = true">Inscribirme</button>
+            <button class="btn-secondary" @click="showRegisterModal = true">Inscribirme</button>
           </div>
         </div>
 
@@ -449,6 +491,80 @@ const benefits = [
         </div>
       </div>
     </transition>
+
+    <transition name="modal-fade">
+  <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
+    <div class="modal-card">
+      <button class="modal-close" @click="showRegisterModal = false">✕</button>
+      <div class="modal-brand">
+        <!-- misma SVG del logo -->
+      </div>
+      <div class="modal-header">
+        <div class="bolt-icon">⚡</div>
+        <h1>Crear cuenta</h1>
+        <p>Completá tus datos para unirte a Rayo Box</p>
+      </div>
+      <form class="login-form" @submit.prevent="registerCustomer">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="field" :class="{ filled: regName }">
+            <label>Nombre</label>
+            <div class="input-wrap">
+              <!-- ícono usuario -->
+              <input v-model="regName" type="text" placeholder="Juan" required />
+            </div>
+          </div>
+          <div class="field" :class="{ filled: regLastName }">
+            <label>Apellido</label>
+            <div class="input-wrap">
+              <input v-model="regLastName" type="text" placeholder="Pérez" required />
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="field" :class="{ filled: regCedula }">
+            <label>Cédula</label>
+            <div class="input-wrap">
+              <input v-model="regCedula" type="text" placeholder="1234567890" required />
+            </div>
+          </div>
+          <div class="field" :class="{ filled: regPhone }">
+            <label>Teléfono</label>
+            <div class="input-wrap">
+              <input v-model="regPhone" type="tel" placeholder="3001234567" required />
+            </div>
+          </div>
+        </div>
+        <div class="field" :class="{ filled: regPassword }">
+          <label>Contraseña</label>
+          <div class="input-wrap">
+            <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+          </div>
+        </div>
+        <div class="field" :class="{ filled: regPassword2 }">
+          <label>Confirmar contraseña</label>
+          <div class="input-wrap">
+            <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+          </div>
+        </div>
+        <transition name="shake">
+          <div v-if="regError" class="error-box"><span>⚡</span> {{ regError }}</div>
+        </transition>
+        <button class="btn-login" type="submit" :disabled="regLoading">
+          <span class="btn-bg"></span>
+          <span class="btn-label">{{ regLoading ? 'Registrando...' : 'CREAR CUENTA' }}</span>
+        </button>
+      </form>
+      <p style="text-align:center;font-size:.74rem;color:#555;margin-top:16px">
+        ¿Ya tenés cuenta?
+        <button style="background:none;border:none;color:#f5c500;cursor:pointer;font-size:.74rem;text-decoration:underline"
+          @click="showRegisterModal = false; showModal = true">
+          Iniciá sesión
+        </button>
+      </p>
+      <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
+    </div>
+  </div>
+</transition>
 
   </div>
 </template>

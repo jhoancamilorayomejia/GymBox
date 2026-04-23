@@ -72,16 +72,13 @@ const cantidadUnidades = ref(1)
 const preferenceId     = ref(null)
 const mostrarWallet    = ref(false)
 
-// ── Fechas ────────────────────────────────────────────────
-const fechaInicio = ref('')   // formato YYYY-MM-DD (input type="date")
+const fechaInicio = ref('')
 
-// Fecha mínima = hoy
 const fechaMinima = computed(() => {
   const hoy = new Date()
   return hoy.toISOString().split('T')[0]
 })
 
-// Calcula la fecha final según tipo de plan y cantidad
 const fechaFin = computed(() => {
   if (!fechaInicio.value || !planSeleccionado.value) return ''
   const [y, m, d] = fechaInicio.value.split('-').map(Number)
@@ -94,21 +91,18 @@ const fechaFin = computed(() => {
   if (tipo === 'mes')    fecha.setMonth(fecha.getMonth() + cant, fecha.getDate() - 1)
   if (tipo === 'anio')   fecha.setFullYear(fecha.getFullYear() + cant, fecha.getMonth(), fecha.getDate() - 1)
 
-  // Formato YYYY-MM-DD
   const yy = fecha.getFullYear()
   const mm = String(fecha.getMonth() + 1).padStart(2, '0')
   const dd = String(fecha.getDate()).padStart(2, '0')
   return `${yy}-${mm}-${dd}`
 })
 
-// Formato legible dd/mm/yyyy
 const fmtDateInput = (str) => {
   if (!str) return '—'
   const [y, m, d] = str.split('-')
   return `${d}/${m}/${y}`
 }
 
-// Descripción del rango
 const descripcionRango = computed(() => {
   if (!fechaInicio.value || !planSeleccionado.value) return ''
   const tipo = planSeleccionado.value.typeplan
@@ -220,6 +214,77 @@ const inicializarMercadoPago = () => {
   })
 }
 
+// ── Modal cambiar contraseña ─────────────────────────
+const mostrarModalPassword = ref(false)
+const guardandoPassword    = ref(false)
+
+const passwordData = ref({
+  password: '',
+  confirmPassword: ''
+})
+
+const abrirModalPassword = () => {
+  passwordData.value.password = ''
+  passwordData.value.confirmPassword = ''
+  mostrarModalPassword.value = true
+}
+
+const cerrarModalPassword = () => {
+  mostrarModalPassword.value = false
+  passwordData.value.password = ''
+  passwordData.value.confirmPassword = ''
+}
+
+
+const cambiarPassword = async () => {
+  if (!passwordData.value.password || !passwordData.value.confirmPassword) {
+    alert('Completa todos los campos')
+    return
+  }
+
+  if (passwordData.value.password !== passwordData.value.confirmPassword) {
+    alert('Las contraseñas no coinciden')
+    return
+  }
+
+  if (passwordData.value.password.length < 6) {
+    alert('La contraseña debe tener al menos 6 caracteres')
+    return
+  }
+
+  guardandoPassword.value = true
+
+  try {
+    const token = localStorage.getItem('token')
+
+    
+    const res = await fetch('/api/users/update-password-by-username', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        username: username,
+        password: passwordData.value.password
+      })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) throw new Error(data.error || 'Error al cambiar contraseña')
+
+    alert('✅ Contraseña actualizada correctamente')
+    cerrarModalPassword()
+
+  } catch (err) {
+    console.error(err)
+    alert('❌ ' + err.message)
+  } finally {
+    guardandoPassword.value = false
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────
 const fmtFecha = (str) => {
   if (!str) return '—'
@@ -309,6 +374,9 @@ onMounted(() => { obtenerPlanes() })
             <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Mis Planes
           </a>
+          <button class="change-pass-btn" @click="abrirModalPassword">
+            🔑 Cambiar contraseña
+          </button>
           <div class="suscripcion-wrap">
             <button class="btn-suscripcion" @click="abrirModal">
               <span class="btn-sus-icon">
@@ -509,7 +577,6 @@ onMounted(() => { obtenerPlanes() })
     <transition name="modal-fade">
       <div v-if="mostrarModal" class="modal-overlay" @click.self="cerrarModal">
         <div class="modal-pay">
-
           <div class="mpay-header">
             <div>
               <span class="mpay-eyebrow">⚡ RAYOBOX · CROSS LIFTING</span>
@@ -518,20 +585,11 @@ onMounted(() => { obtenerPlanes() })
             </div>
             <button class="mpay-close" @click="cerrarModal">✕</button>
           </div>
-
           <div class="mpay-body">
-
-            <!-- Columna izquierda -->
             <div class="mpay-left">
               <p class="mpay-section-label">ELIGE UN PLAN</p>
               <div class="mpay-planes">
-                <button
-                  v-for="p in pricePlans"
-                  :key="p.idpriceplan"
-                  class="mpay-plan-card"
-                  :class="{ 'mpay-plan-activo': planSeleccionado?.idpriceplan === p.idpriceplan }"
-                  @click="seleccionarPlan(p)"
-                >
+                <button v-for="p in pricePlans" :key="p.idpriceplan" class="mpay-plan-card" :class="{ 'mpay-plan-activo': planSeleccionado?.idpriceplan === p.idpriceplan }" @click="seleccionarPlan(p)">
                   <span class="mpay-plan-icon">{{ ICON_PLANES[p.typeplan] || '📌' }}</span>
                   <div class="mpay-plan-info">
                     <span class="mpay-plan-nombre">{{ LABEL_PLANES[p.typeplan] || p.typeplan }}</span>
@@ -540,8 +598,6 @@ onMounted(() => { obtenerPlanes() })
                   <span class="mpay-plan-check" v-if="planSeleccionado?.idpriceplan === p.idpriceplan">✓</span>
                 </button>
               </div>
-
-              <!-- Selector de cantidad -->
               <div class="mpay-cantidad-box" v-if="planSeleccionado">
                 <p class="mpay-section-label" style="margin-bottom:10px">
                   CANTIDAD DE {{ (LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan).toUpperCase() + (cantidadUnidades > 1 ? 'S' : '') }}
@@ -551,21 +607,11 @@ onMounted(() => { obtenerPlanes() })
                   <span class="mpay-qty-val">{{ cantidadUnidades }}</span>
                   <button class="mpay-qty-btn" @click="cantidadUnidades++">+</button>
                 </div>
-                <p class="mpay-cantidad-hint">
-                  {{ cantidadUnidades }} {{ LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan }}{{ cantidadUnidades > 1 ? 's' : '' }} de membresía
-                </p>
+                <p class="mpay-cantidad-hint">{{ cantidadUnidades }} {{ LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan }}{{ cantidadUnidades > 1 ? 's' : '' }} de membresía</p>
               </div>
-
-              <!-- ✅ Selector de fecha de inicio -->
               <div class="mpay-fecha-box" v-if="planSeleccionado">
                 <p class="mpay-section-label" style="margin-bottom:10px">FECHA DE INICIO</p>
-                <input
-                  type="date"
-                  class="mpay-date-input"
-                  v-model="fechaInicio"
-                  :min="fechaMinima"
-                />
-                <!-- ✅ Fecha final calculada automáticamente -->
+                <input type="date" class="mpay-date-input" v-model="fechaInicio" :min="fechaMinima"/>
                 <div class="mpay-fecha-fin" v-if="fechaFin">
                   <div class="mpay-fecha-row">
                     <div class="mpay-fecha-item">
@@ -582,17 +628,13 @@ onMounted(() => { obtenerPlanes() })
                 </div>
               </div>
             </div>
-
-            <!-- Columna derecha -->
             <div class="mpay-right" :class="{ 'mpay-right-vacio': !planSeleccionado }">
               <div v-if="!planSeleccionado" class="mpay-vacio">
                 <span class="mpay-vacio-icon">⚡</span>
                 <p>Selecciona un plan<br>para ver el resumen</p>
               </div>
-
               <template v-else>
                 <p class="mpay-section-label">RESUMEN DE PAGO</p>
-
                 <div class="mpay-resumen">
                   <div class="mpay-resumen-plan">
                     <span class="mpay-resumen-icon">{{ ICON_PLANES[planSeleccionado.typeplan] || '📌' }}</span>
@@ -601,69 +643,92 @@ onMounted(() => { obtenerPlanes() })
                       <span class="mpay-resumen-unit">× {{ cantidadUnidades }} unidad{{ cantidadUnidades > 1 ? 'es' : '' }}</span>
                     </div>
                   </div>
-
                   <div class="mpay-lineas">
-                    <div class="mpay-linea">
-                      <span>Precio unitario</span>
-                      <span>${{ Number(planSeleccionado.price).toLocaleString('es-CO') }}</span>
-                    </div>
-                    <div class="mpay-linea" v-if="cantidadUnidades > 1">
-                      <span>Cantidad</span>
-                      <span>× {{ cantidadUnidades }}</span>
-                    </div>
-                    <!-- ✅ Fechas en el resumen -->
-                    <div class="mpay-linea" v-if="fechaInicio">
-                      <span>Fecha inicio</span>
-                      <span>{{ fmtDateInput(fechaInicio) }}</span>
-                    </div>
-                    <div class="mpay-linea" v-if="fechaFin">
-                      <span>Fecha fin</span>
-                      <span>{{ fmtDateInput(fechaFin) }}</span>
-                    </div>
+                    <div class="mpay-linea"><span>Precio unitario</span><span>${{ Number(planSeleccionado.price).toLocaleString('es-CO') }}</span></div>
+                    <div class="mpay-linea" v-if="cantidadUnidades > 1"><span>Cantidad</span><span>× {{ cantidadUnidades }}</span></div>
+                    <div class="mpay-linea" v-if="fechaInicio"><span>Fecha inicio</span><span>{{ fmtDateInput(fechaInicio) }}</span></div>
+                    <div class="mpay-linea" v-if="fechaFin"><span>Fecha fin</span><span>{{ fmtDateInput(fechaFin) }}</span></div>
                     <div class="mpay-divider"></div>
-                    <div class="mpay-linea mpay-linea-total">
-                      <span>TOTAL</span>
-                      <span class="mpay-total-val">${{ totalAPagar.toLocaleString('es-CO') }}</span>
-                    </div>
+                    <div class="mpay-linea mpay-linea-total"><span>TOTAL</span><span class="mpay-total-val">${{ totalAPagar.toLocaleString('es-CO') }}</span></div>
                   </div>
-
                   <div class="mpay-desglose" v-if="cantidadUnidades > 1">
                     <p class="mpay-desglose-label">Desglose</p>
                     <div class="mpay-desglose-chips">
-                      <span v-for="n in cantidadUnidades" :key="n" class="mpay-chip">
-                        {{ LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan }} {{ n }}: ${{ Number(planSeleccionado.price * n).toLocaleString('es-CO') }}
-                      </span>
+                      <span v-for="n in cantidadUnidades" :key="n" class="mpay-chip">{{ LABEL_PLANES[planSeleccionado.typeplan] || planSeleccionado.typeplan }} {{ n }}: ${{ Number(planSeleccionado.price * n).toLocaleString('es-CO') }}</span>
                     </div>
                   </div>
                 </div>
-
-                <!-- Alerta si falta fecha -->
-                <div class="mpay-alerta" v-if="!fechaInicio">
-                  <span>📅</span> Selecciona una fecha de inicio para continuar
-                </div>
-
-                <!-- Botón pagar -->
-                <button
-                  class="mpay-btn-pagar"
-                  @click="realizarPago"
-                  :disabled="mostrarWallet || !fechaInicio"
-                >
+                <div class="mpay-alerta" v-if="!fechaInicio"><span>📅</span> Selecciona una fecha de inicio para continuar</div>
+                <button class="mpay-btn-pagar" @click="realizarPago" :disabled="mostrarWallet || !fechaInicio">
                   <span class="mpay-pagar-bolt">⚡</span>
                   <span class="mpay-pagar-text">
                     <span class="mpay-pagar-titulo">{{ mostrarWallet ? 'Procesando...' : 'Pagar ahora' }}</span>
                     <span class="mpay-pagar-monto">${{ totalAPagar.toLocaleString('es-CO') }}</span>
                   </span>
-                  <svg class="mpay-pagar-arrow" viewBox="0 0 20 20" fill="none">
-                    <path d="M4 10h12M10 4l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
+                  <svg class="mpay-pagar-arrow" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M10 4l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
-
-                <!-- ✅ wallet_container FUERA del botón -->
                 <div v-if="mostrarWallet" id="wallet_container"></div>
-
                 <p class="mpay-nota">Al realizar el pago, tu entrenador activará el plan en el sistema.</p>
               </template>
             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ✅ MODAL CAMBIAR PASSWORD -->
+    <transition name="modal-fade">
+      <div v-if="mostrarModalPassword" class="modal-overlay" @click.self="cerrarModalPassword">
+        <div class="modal-pay" style="max-width: 420px;">
+
+          <div class="mpay-header">
+            <div>
+              <span class="mpay-eyebrow">⚡ RAYOBOX · SEGURIDAD</span>
+              <h2 class="mpay-title">Cambiar contraseña</h2>
+              <p class="mpay-sub">Usuario: <strong style="color:#f5c500">{{ username }}</strong></p>
+            </div>
+            <button class="mpay-close" @click="cerrarModalPassword">✕</button>
+          </div>
+
+          <div class="mpay-body" style="display:flex; flex-direction:column; gap:16px; padding:24px 28px;">
+
+            <div class="pass-field">
+              <label class="pass-label">NUEVA CONTRASEÑA</label>
+              <input
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                v-model="passwordData.password"
+                class="mpay-date-input"
+              />
+            </div>
+
+            <div class="pass-field">
+              <label class="pass-label">CONFIRMAR CONTRASEÑA</label>
+              <input
+                type="password"
+                placeholder="Repite la contraseña"
+                v-model="passwordData.confirmPassword"
+                class="mpay-date-input"
+              />
+            </div>
+
+            <!-- Indicador de coincidencia -->
+            <div v-if="passwordData.confirmPassword" class="pass-match" :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
+              {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
+            </div>
+
+            <button
+              class="mpay-btn-pagar"
+              @click="cambiarPassword"
+              :disabled="guardandoPassword"
+              style="margin-top:4px"
+            >
+              <span class="mpay-pagar-bolt">🔑</span>
+              <span class="mpay-pagar-text">
+                <span class="mpay-pagar-titulo">{{ guardandoPassword ? 'Guardando...' : 'Guardar contraseña' }}</span>
+                <span class="mpay-pagar-monto">{{ username }}</span>
+              </span>
+            </button>
 
           </div>
         </div>
@@ -698,6 +763,20 @@ onMounted(() => { obtenerPlanes() })
 .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
 .nav-item:hover { color: #f0f0f0; background: rgba(245,197,0,.05); }
 .nav-item.active { color: #f5c500; border-left-color: #f5c500; background: rgba(245,197,0,.07); }
+
+/* ✅ Botón cambiar contraseña en sidebar */
+.change-pass-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; width: 100%; text-align: left;
+  background: transparent; border: none; border-left: 2px solid transparent;
+  color: #555; font-size: .82rem; font-weight: 500;
+  letter-spacing: .04em; cursor: pointer; transition: all .2s;
+}
+.change-pass-btn:hover {
+  color: #f0f0f0; background: rgba(245,197,0,.05);
+  border-left-color: rgba(245,197,0,.3);
+}
+
 .sidebar-footer { padding: 20px 16px 0; border-top: 1px solid rgba(245,197,0,.08); display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .user-chip { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg,#f5c500,#ff7a00); color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -846,9 +925,6 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .expand-leave-active { transition: opacity .2s ease, transform .2s ease; }
 .expand-enter-from, .expand-leave-to { opacity: 0; transform: translateY(-8px); }
 
-/* ══════════════════════════════════════════════════════════ */
-/* MODAL DE PAGO                                             */
-/* ══════════════════════════════════════════════════════════ */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .modal-pay { background: #0f0f0f; border: 1px solid rgba(245,197,0,.2); box-shadow: 0 40px 100px rgba(0,0,0,.9), 0 0 80px rgba(245,197,0,.04); width: 100%; max-width: 780px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; animation: modalIn .32s cubic-bezier(.16,1,.3,1) both; }
 @keyframes modalIn { from{opacity:0;transform:scale(.96) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)} }
@@ -880,14 +956,8 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .mpay-qty-val { width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1.2rem; color: #fff; background: #0d0d0d; border-left: 1px solid rgba(245,197,0,.15); border-right: 1px solid rgba(245,197,0,.15); }
 .mpay-cantidad-hint { font-size: .72rem; color: #555; margin-top: 10px; letter-spacing: .04em; }
 
-/* ✅ Estilos del selector de fecha */
 .mpay-fecha-box { background: #111; border: 1px solid rgba(245,197,0,.1); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-.mpay-date-input {
-  width: 100%; background: #0d0d0d; border: 1px solid rgba(245,197,0,.25);
-  color: #f0f0f0; padding: 10px 14px; font-family: 'Barlow',sans-serif;
-  font-size: .85rem; cursor: pointer; outline: none; transition: border-color .2s;
-  color-scheme: dark;
-}
+.mpay-date-input { width: 100%; background: #0d0d0d; border: 1px solid rgba(245,197,0,.25); color: #f0f0f0; padding: 10px 14px; font-family: 'Barlow',sans-serif; font-size: .85rem; cursor: pointer; outline: none; transition: border-color .2s; color-scheme: dark; }
 .mpay-date-input:focus { border-color: #f5c500; }
 .mpay-date-input::-webkit-calendar-picker-indicator { filter: invert(1) sepia(1) saturate(5) hue-rotate(10deg); cursor: pointer; }
 .mpay-fecha-fin { background: rgba(245,197,0,.04); border: 1px solid rgba(245,197,0,.12); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -925,7 +995,6 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .mpay-desglose-chips::-webkit-scrollbar-thumb:hover { background: rgba(245,197,0,.45); }
 .mpay-chip { font-size: .72rem; color: #666; padding: 4px 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); border-radius: 1px; font-family: 'Barlow Condensed',sans-serif; letter-spacing: .04em; }
 
-/* ✅ Alerta fecha faltante */
 .mpay-alerta { display: flex; align-items: center; gap: 8px; background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.25); padding: 10px 14px; font-size: .75rem; color: #f59e0b; letter-spacing: .03em; }
 
 .mpay-btn-pagar { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, #f5c500 0%, #ff9500 100%); border: none; padding: 16px 22px; cursor: pointer; transition: all .25s; width: 100%; text-align: left; position: relative; overflow: hidden; }
@@ -940,8 +1009,14 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .mpay-pagar-arrow { width: 20px; height: 20px; stroke: rgba(0,0,0,.5); flex-shrink: 0; }
 
 #wallet_container { width: 100%; min-height: 48px; }
-
 .mpay-nota { font-size: .68rem; color: #444; line-height: 1.5; letter-spacing: .03em; padding: 0 2px; }
+
+/* ✅ Estilos del modal de contraseña */
+.pass-field { display: flex; flex-direction: column; gap: 6px; }
+.pass-label { font-family: 'Barlow Condensed',sans-serif; font-size: .58rem; letter-spacing: .28em; text-transform: uppercase; color: #f5c500; font-weight: 700; opacity: .7; }
+.pass-match { font-size: .75rem; padding: 8px 12px; border: 1px solid; letter-spacing: .03em; }
+.match-ok   { color: #4ade80; border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.06); }
+.match-fail { color: #f87171; border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.06); }
 
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .25s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }

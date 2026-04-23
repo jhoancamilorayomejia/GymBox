@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -230,4 +231,48 @@ func UpdateCustomer(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Cliente actualizado correctamente"})
+}
+
+func UpdatePasswordByUsername(c *gin.Context) {
+	var body struct {
+		Username string `json:"username"` // aquí viene la cédula
+		Password string `json:"password"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+		return
+	}
+
+	if body.Username == "" || body.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username y contraseña son requeridos"})
+		return
+	}
+
+	// 🔐 Encriptar contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al encriptar la contraseña"})
+		return
+	}
+
+	// ✅ UPDATE en customers usando cedula = username
+	result, err := db.DB.Exec(
+		"UPDATE customers SET password = $1 WHERE cedula = $2",
+		string(hashedPassword),
+		body.Username,
+	)
+	if err != nil {
+		fmt.Println("❌ Error SQL:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente no encontrado"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Contraseña actualizada correctamente"})
 }

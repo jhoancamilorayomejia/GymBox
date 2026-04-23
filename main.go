@@ -69,6 +69,7 @@ func main() {
 	// ✅ Ruta de login Publica
 	r.POST("/api/login", controllers.Login)
 	r.GET("/api/login-price_plans", controllers.GetPricePlans)
+	r.POST("/api/new-public-customers", controllers.CreateCustomer)
 
 	//ruta para admin, con permisos token
 	r.GET("/api/users", AuthMiddleware(), controllers.GetUser)
@@ -76,28 +77,32 @@ func main() {
 
 	//Users endpoint desde administrador
 	r.POST("/api/new-users", AuthMiddleware(), controllers.CreateUser)
-	r.DELETE("/api/delete-users/:id", controllers.DeleteUser)
-	r.PUT("/api/update-users/:id", controllers.UpdateUser)
+	r.DELETE("/api/delete-users/:id", AuthMiddleware(), controllers.DeleteUser)
+	r.PUT("/api/update-users/:id", AuthMiddleware(), controllers.UpdateUser)
 
 	//planes endpoint desde administrador
 	r.GET("/api/plans", AuthMiddleware(), controllers.GetPlan)
 	r.POST("/api/plans", AuthMiddleware(), controllers.CreatePlan)
-	r.DELETE("/api/delete-plans/:id", controllers.DeletePlan)
-	r.DELETE("/api/delete-plans-multiple", controllers.DeletePlan)
-	r.PUT("/api/update-plans/:id", controllers.UpdatePlan)
+	r.DELETE("/api/delete-plans/:id", AuthMiddleware(), controllers.DeletePlan)
+	r.DELETE("/api/delete-plans-multiple", AuthMiddleware(), controllers.DeletePlan)
+	r.PUT("/api/update-plans/:id", AuthMiddleware(), controllers.UpdatePlan)
 
 	//para visualizar y actualizar precios de la membresia
-	r.GET("/api/priceplan", controllers.GetPricePlans)
-	r.PUT("/api/update-priceplan/:id", controllers.UpdatePricePlan)
+	r.GET("/api/priceplan", AuthMiddleware(), controllers.GetPricePlans)
+	r.PUT("/api/update-priceplan/:id", AuthMiddleware(), controllers.UpdatePricePlan)
 
 	//mostrar precios de membresia para clientes customer
-	r.GET("/api/customer-priceplans", controllers.GetPricePlans)
+	r.GET("/api/customer-priceplans", AuthMiddleware(), controllers.GetPricePlans)
 	// Pagos Mercado Pago
 	r.POST("/api/payment/preference", AuthMiddleware(), controllers.CreatePreference)
 
-	r.POST("/api/new-customers", controllers.CreateCustomer)
-	r.PUT("/api/update-customers/:id", controllers.UpdateCustomer)
-	r.DELETE("/api/delete-customers/:id", controllers.DeleteCustomer)
+	r.POST("/api/new-customers", AuthMiddleware(), controllers.CreateCustomer)
+	r.PUT("/api/update-customers/:id", AuthMiddleware(), controllers.UpdateCustomer)
+	r.DELETE("/api/delete-customers/:id", AuthMiddleware(), controllers.DeleteCustomer)
+
+	// Con middleware de autenticación:
+	//r.PUT("/api/users/update-password/:id", AuthMiddleware(), controllers.UpdatePassword)
+	r.PUT("/api/users/update-password-by-username", AuthMiddleware(), controllers.UpdatePasswordByUsername)
 
 	//
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)

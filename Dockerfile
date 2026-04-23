@@ -18,7 +18,7 @@ COPY public/ ./public/
 RUN npm run build
 
 # ── Etapa 2: Build de Go ──────────────────────────────────────────
-FROM golang:1.23-alpine AS go-build
+FROM golang:1.25.4-alpine AS go-build
 
 WORKDIR /app
 

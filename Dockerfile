@@ -14,11 +14,15 @@ COPY index.html vite.config.js eslint.config.js ./
 COPY src/ ./src/
 COPY public/ ./public/
 
+# ✅ Recibir la clave pública de Mercado Pago en tiempo de build
+ARG VITE_MP_PUBLIC_KEY
+ENV VITE_MP_PUBLIC_KEY=$VITE_MP_PUBLIC_KEY
+
 # Compilar Vue para producción
 RUN npm run build
 
 # ── Etapa 2: Build de Go ──────────────────────────────────────────
-FROM golang:1.25.4-alpine AS go-build
+FROM golang:1.25rc2-alpine AS go-build
 
 WORKDIR /app
 

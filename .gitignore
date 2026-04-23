@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (NUNCA subir a GitHub)
+.env
+.env.local
+.env.production
+
+# Build de Vue (Railway lo genera solo)
+# dist/   ← puedes dejarlo comentado si quieres que Railway use el tuyo
+
+# Go binarios
+server
+*.exe
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -110,27 +110,14 @@ func main() {
 	r.PUT("/api/users/update-password-by-username", AuthMiddleware(), controllers.UpdatePasswordByUsername)
 	r.GET("/api/customers/by-cedula/:cedula", AuthMiddleware(), controllers.GetCustomerByCedula)
 
-	// ✅ Ruta raíz (IMPORTANTE para Railway)
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "GymBox API funcionando 🚀",
-		})
-	})
-
-	// Todo lo que no sea una ruta real del backend → index.html (Vue Router)
-	r.NoRoute(func(c *gin.Context) {
-		if _, err := os.Stat("./dist/index.html"); err == nil {
-			c.File("./dist/index.html")
-		} else {
-			c.JSON(404, gin.H{
-				"error": "Ruta no encontrada",
-			})
-		}
-	})
-
 	// ── Servir frontend Vue (dist/) ────────────────────────────────
 	r.Static("/assets", "./dist/assets")
 	r.StaticFile("/favicon.ico", "./dist/favicon.ico")
+
+	// Todo lo que no sea una ruta real del backend → index.html (Vue Router)
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./dist/index.html")
+	})
 
 	// ✅ Puerto dinámico — Railway asigna el puerto via variable PORT
 	port := os.Getenv("PORT")

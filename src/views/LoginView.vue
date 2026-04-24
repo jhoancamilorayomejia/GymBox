@@ -9,6 +9,7 @@ const loginPassword = ref('')
 const loginError    = ref('')
 const loginLoading  = ref(false)
 const showPassword  = ref(false)
+const mobileMenuOpen = ref(false)
 
 const loginAdmin = async () => {
   loginLoading.value = true
@@ -137,7 +138,7 @@ const registerCustomer = async () => {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Error al registrarse')
     showRegisterModal.value = false
-    showModal.value = true  // abre login tras registro exitoso
+    showModal.value = true
   } catch (err) {
     regError.value = err.message
   } finally {
@@ -167,7 +168,24 @@ const registerCustomer = async () => {
           <a href="#plataforma">Plataforma</a>
           <button class="btn-nav-login" @click="showModal = true">Iniciar Sesión</button>
         </div>
+        <!-- Mobile nav -->
+        <div class="nav-mobile">
+          <button class="btn-nav-login" @click="showModal = true">Ingresar</button>
+          <button class="hamburger" @click="mobileMenuOpen = !mobileMenuOpen" :class="{ open: mobileMenuOpen }">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
       </div>
+      <!-- Mobile dropdown menu -->
+      <transition name="menu-drop">
+        <div v-if="mobileMenuOpen" class="mobile-menu">
+          <a href="#sede"        @click="mobileMenuOpen = false">Sede</a>
+          <a href="#planes"      @click="mobileMenuOpen = false">Planes</a>
+          <a href="#disciplinas" @click="mobileMenuOpen = false">Disciplinas</a>
+          <a href="#plataforma"  @click="mobileMenuOpen = false">Plataforma</a>
+          <button class="mobile-menu-register" @click="mobileMenuOpen = false; showRegisterModal = true">Registrarse</button>
+        </div>
+      </transition>
     </nav>
 
     <!-- HERO -->
@@ -492,79 +510,85 @@ const registerCustomer = async () => {
       </div>
     </transition>
 
+    <!-- MODAL REGISTRO -->
     <transition name="modal-fade">
-  <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
-    <div class="modal-card">
-      <button class="modal-close" @click="showRegisterModal = false">✕</button>
-      <div class="modal-brand">
-        <!-- misma SVG del logo -->
+      <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
+        <div class="modal-card">
+          <button class="modal-close" @click="showRegisterModal = false">✕</button>
+          <div class="modal-header">
+            <div class="bolt-icon">⚡</div>
+            <h1>Crear cuenta</h1>
+            <p>Completá tus datos para unirte a Rayo Box</p>
+          </div>
+          <form class="login-form" @submit.prevent="registerCustomer">
+            <div class="reg-grid">
+              <div class="field" :class="{ filled: regName }">
+                <label>Nombre</label>
+                <div class="input-wrap">
+                  <input v-model="regName" type="text" placeholder="Juan" required />
+                </div>
+              </div>
+              <div class="field" :class="{ filled: regLastName }">
+                <label>Apellido</label>
+                <div class="input-wrap">
+                  <input v-model="regLastName" type="text" placeholder="Pérez" required />
+                </div>
+              </div>
+            </div>
+            <div class="reg-grid">
+              <div class="field" :class="{ filled: regCedula }">
+                <label>Cédula</label>
+                <div class="input-wrap">
+                  <input v-model="regCedula" type="text" placeholder="1234567890" required />
+                </div>
+              </div>
+              <div class="field" :class="{ filled: regPhone }">
+                <label>Teléfono</label>
+                <div class="input-wrap">
+                  <input v-model="regPhone" type="tel" placeholder="3001234567" required />
+                </div>
+              </div>
+            </div>
+            <div class="field" :class="{ filled: regPassword }">
+              <label>Contraseña</label>
+              <div class="input-wrap">
+                <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+                <button type="button" class="eye-btn" @click="showRegPassword = !showRegPassword">
+                  <svg v-if="!showRegPassword" viewBox="0 0 20 20" fill="none">
+                    <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
+                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 20 20" fill="none">
+                    <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="field" :class="{ filled: regPassword2 }">
+              <label>Confirmar contraseña</label>
+              <div class="input-wrap">
+                <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+              </div>
+            </div>
+            <transition name="shake">
+              <div v-if="regError" class="error-box"><span>⚡</span> {{ regError }}</div>
+            </transition>
+            <button class="btn-login" type="submit" :disabled="regLoading">
+              <span class="btn-bg"></span>
+              <span class="btn-label">{{ regLoading ? 'Registrando...' : 'CREAR CUENTA' }}</span>
+            </button>
+          </form>
+          <p style="text-align:center;font-size:.74rem;color:#555;margin-top:16px">
+            ¿Ya tenés cuenta?
+            <button style="background:none;border:none;color:#f5c500;cursor:pointer;font-size:.74rem;text-decoration:underline"
+              @click="showRegisterModal = false; showModal = true">
+              Iniciá sesión
+            </button>
+          </p>
+          <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
+        </div>
       </div>
-      <div class="modal-header">
-        <div class="bolt-icon">⚡</div>
-        <h1>Crear cuenta</h1>
-        <p>Completá tus datos para unirte a Rayo Box</p>
-      </div>
-      <form class="login-form" @submit.prevent="registerCustomer">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div class="field" :class="{ filled: regName }">
-            <label>Nombre</label>
-            <div class="input-wrap">
-              <!-- ícono usuario -->
-              <input v-model="regName" type="text" placeholder="Juan" required />
-            </div>
-          </div>
-          <div class="field" :class="{ filled: regLastName }">
-            <label>Apellido</label>
-            <div class="input-wrap">
-              <input v-model="regLastName" type="text" placeholder="Pérez" required />
-            </div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div class="field" :class="{ filled: regCedula }">
-            <label>Cédula</label>
-            <div class="input-wrap">
-              <input v-model="regCedula" type="text" placeholder="1234567890" required />
-            </div>
-          </div>
-          <div class="field" :class="{ filled: regPhone }">
-            <label>Teléfono</label>
-            <div class="input-wrap">
-              <input v-model="regPhone" type="tel" placeholder="3001234567" required />
-            </div>
-          </div>
-        </div>
-        <div class="field" :class="{ filled: regPassword }">
-          <label>Contraseña</label>
-          <div class="input-wrap">
-            <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
-          </div>
-        </div>
-        <div class="field" :class="{ filled: regPassword2 }">
-          <label>Confirmar contraseña</label>
-          <div class="input-wrap">
-            <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
-          </div>
-        </div>
-        <transition name="shake">
-          <div v-if="regError" class="error-box"><span>⚡</span> {{ regError }}</div>
-        </transition>
-        <button class="btn-login" type="submit" :disabled="regLoading">
-          <span class="btn-bg"></span>
-          <span class="btn-label">{{ regLoading ? 'Registrando...' : 'CREAR CUENTA' }}</span>
-        </button>
-      </form>
-      <p style="text-align:center;font-size:.74rem;color:#555;margin-top:16px">
-        ¿Ya tenés cuenta?
-        <button style="background:none;border:none;color:#f5c500;cursor:pointer;font-size:.74rem;text-decoration:underline"
-          @click="showRegisterModal = false; showModal = true">
-          Iniciá sesión
-        </button>
-      </p>
-      <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
-    </div>
-  </div>
-</transition>
+    </transition>
 
   </div>
 </template>
@@ -574,7 +598,7 @@ const registerCustomer = async () => {
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 .site{font-family:'Barlow',sans-serif;background:#0a0a0a;color:#e8e8e8;overflow-x:hidden}
 
-/* NAVBAR */
+/* ── NAVBAR ── */
 .navbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(245,197,0,.12)}
 .nav-inner{max-width:1200px;margin:0 auto;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between}
 .logo-svg{width:130px;height:auto}
@@ -584,7 +608,23 @@ const registerCustomer = async () => {
 .btn-nav-login{background:#f5c500;border:none;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.85rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:9px 22px;cursor:pointer;transition:background .2s,transform .15s}
 .btn-nav-login:hover{background:#ffd633;transform:translateY(-1px)}
 
-/* HERO */
+/* Mobile nav elements — hidden on desktop */
+.nav-mobile{display:none;align-items:center;gap:12px}
+.hamburger{background:none;border:none;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px;width:32px}
+.hamburger span{display:block;height:2px;background:#f5c500;border-radius:2px;transition:transform .25s, opacity .25s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* Mobile dropdown */
+.mobile-menu{background:rgba(10,10,10,.97);border-bottom:1px solid rgba(245,197,0,.12);display:flex;flex-direction:column;padding:12px 20px 20px}
+.mobile-menu a{color:#aaa;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;padding:13px 0;border-bottom:1px solid #1a1a1a;transition:color .2s}
+.mobile-menu a:hover{color:#f5c500}
+.mobile-menu-register{margin-top:16px;background:#f5c500;border:none;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.9rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:13px;cursor:pointer;width:100%}
+.menu-drop-enter-active,.menu-drop-leave-active{transition:opacity .2s, transform .2s}
+.menu-drop-enter-from,.menu-drop-leave-to{opacity:0;transform:translateY(-8px)}
+
+/* ── HERO ── */
 .hero{min-height:100vh;display:flex;align-items:center;padding:100px 32px 80px;position:relative;overflow:hidden}
 .hero-bg{position:absolute;inset:0;pointer-events:none}
 .hero-geo{position:absolute}
@@ -609,13 +649,13 @@ const registerCustomer = async () => {
 .badge-num{font-family:'Barlow Condensed',sans-serif;font-size:3.5rem;font-weight:900;color:#f5c500;line-height:1}
 .badge-txt{font-size:.7rem;color:#555;letter-spacing:.1em;text-transform:uppercase}
 
-/* SECTIONS */
+/* ── SECTIONS ── */
 .section-inner{max-width:1200px;margin:0 auto;padding:0 32px}
 .section-label{font-size:.65rem;letter-spacing:.35em;text-transform:uppercase;color:#f5c500;margin-bottom:12px}
 .section-title{font-family:'Barlow Condensed',sans-serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;text-transform:uppercase;color:#fff;margin-bottom:12px;line-height:1.1}
 .section-sub{font-size:.9rem;color:#666;max-width:560px;line-height:1.7;margin-bottom:48px}
 
-/* SEDE */
+/* ── SEDE ── */
 .sede-section{padding:100px 0;background:#0d0d0d;border-top:1px solid rgba(245,197,0,.08);border-bottom:1px solid rgba(245,197,0,.08)}
 .sede-card{display:grid;grid-template-columns:1fr 1fr;gap:40px;background:#111;border:1px solid rgba(245,197,0,.1);padding:40px}
 .sede-info{display:flex;flex-direction:column;gap:24px}
@@ -630,7 +670,7 @@ const registerCustomer = async () => {
 .map-pin{font-size:2.5rem;margin-bottom:12px;display:block}
 .map-inner span{font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;color:#555}
 
-/* PLANES */
+/* ── PLANES ── */
 .planes-section{padding:100px 0}
 .plans-loading{display:flex;align-items:center;gap:16px;padding:48px 0;color:#555;font-size:.85rem;letter-spacing:.1em}
 .loading-spinner{width:20px;height:20px;border:2px solid #222;border-top-color:#f5c500;border-radius:50%;animation:spin .7s linear infinite}
@@ -648,11 +688,9 @@ const registerCustomer = async () => {
 .plan-perks{list-style:none;display:flex;flex-direction:column;gap:8px;flex:1}
 .plan-perks li{font-size:.8rem;color:#888;display:flex;gap:8px;align-items:flex-start}
 .perk-check{color:#f5c500;font-weight:700;flex-shrink:0}
-.btn-plan{background:transparent;border:1px solid rgba(245,197,0,.4);color:#f5c500;font-family:'Barlow Condensed',sans-serif;font-size:.8rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:11px;cursor:pointer;margin-top:auto;transition:background .25s,border-color .25s,color .25s}
-.btn-plan:hover,.plan-card.featured .btn-plan{background:#f5c500;border-color:#f5c500;color:#0a0a0a}
 .planes-note{font-size:.7rem;color:#444;margin-top:24px;text-align:center}
 
-/* DISCIPLINAS */
+/* ── DISCIPLINAS ── */
 .disciplinas-section{padding:100px 0;background:#0d0d0d;border-top:1px solid rgba(245,197,0,.08);border-bottom:1px solid rgba(245,197,0,.08)}
 .disc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;background:#111;border:1px solid #1a1a1a}
 .disc-card{background:#0d0d0d;display:flex;flex-direction:column;overflow:hidden;transition:background .2s}
@@ -666,7 +704,7 @@ const registerCustomer = async () => {
 .disc-name{font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:900;text-transform:uppercase;color:#fff;margin-bottom:10px}
 .disc-desc{font-size:.82rem;color:#666;line-height:1.65}
 
-/* PLATAFORMA */
+/* ── PLATAFORMA ── */
 .plataforma-section{padding:100px 0}
 .plat-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
 .benefits-list{display:flex;flex-direction:column;gap:24px;margin-bottom:36px}
@@ -675,7 +713,7 @@ const registerCustomer = async () => {
 .benefit-item strong{display:block;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#f5c500;margin-bottom:4px}
 .benefit-item p{font-size:.82rem;color:#666;line-height:1.6}
 
-/* Mock */
+/* ── MOCK ── */
 .screen-mock{background:#111;border:1px solid rgba(245,197,0,.15);border-radius:4px;box-shadow:0 40px 80px rgba(0,0,0,.6),0 0 40px rgba(245,197,0,.06);overflow:hidden}
 .mock-bar{background:#0d0d0d;padding:8px 12px;display:flex;gap:6px;align-items:center;border-bottom:1px solid #1a1a1a}
 .mock-bar span{width:8px;height:8px;border-radius:50%;background:#222}
@@ -733,7 +771,6 @@ const registerCustomer = async () => {
 .legend-dot.avail{background:rgba(30,80,40,.6)}
 .legend-dot.venc{background:rgba(80,30,20,.6)}
 .legend-dot.noacc{background:#1a1a1a;border:1px solid #2e2e2e}
-.mock-table-section{}
 .mock-table-title{font-size:.52rem;letter-spacing:.2em;color:#f5c500;text-transform:uppercase;margin-bottom:6px}
 .mock-table-row{display:grid;grid-template-columns:28px 1fr 60px 60px;gap:6px;padding:5px 6px;font-size:.58rem;color:#888;align-items:center;border-bottom:1px solid #111}
 .mock-table-row.header-row{font-size:.48rem;letter-spacing:.15em;color:#333;text-transform:uppercase;border-bottom:1px solid #1a1a1a}
@@ -743,7 +780,7 @@ const registerCustomer = async () => {
 .mock-mp-btn{background:#f5c500;color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:.65rem;font-weight:900;letter-spacing:.15em;text-align:center;padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-transform:uppercase}
 .mp-logo{width:18px;height:18px;flex-shrink:0}
 
-/* FOOTER */
+/* ── FOOTER ── */
 .footer{background:#060606;border-top:1px solid rgba(245,197,0,.1);padding:48px 0 24px}
 .footer-inner{max-width:1200px;margin:0 auto;padding:0 32px 32px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:32px;border-bottom:1px solid #111}
 .footer-logo p{font-size:.75rem;color:#444;margin-top:10px;line-height:1.6}
@@ -752,11 +789,11 @@ const registerCustomer = async () => {
 .footer-links a:hover{color:#f5c500}
 .footer-copy{max-width:1200px;margin:0 auto;padding:20px 32px 0;font-size:.68rem;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
 
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .modal-fade-enter-active,.modal-fade-leave-active{transition:opacity .3s}
 .modal-fade-enter-from,.modal-fade-leave-to{opacity:0}
-.modal-card{position:relative;width:100%;max-width:420px;background:#111;border:1px solid rgba(245,197,0,.15);box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 60px rgba(245,197,0,.05);padding:44px 40px 36px;animation:cardIn .4s cubic-bezier(.16,1,.3,1) both}
+.modal-card{position:relative;width:100%;max-width:420px;background:#111;border:1px solid rgba(245,197,0,.15);box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 60px rgba(245,197,0,.05);padding:44px 40px 36px;animation:cardIn .4s cubic-bezier(.16,1,.3,1) both;margin:auto}
 @keyframes cardIn{from{opacity:0;transform:scale(.95) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:#444;font-size:1rem;cursor:pointer;transition:color .2s}
 .modal-close:hover{color:#f5c500}
@@ -792,8 +829,99 @@ const registerCustomer = async () => {
 @keyframes spin{to{transform:rotate(360deg)}}
 .modal-footer-note{text-align:center;font-size:.62rem;color:#282828;letter-spacing:.1em;text-transform:uppercase;margin-top:24px}
 
-/* RESPONSIVE */
-@media(max-width:1000px){.plat-inner{grid-template-columns:1fr}}
-@media(max-width:900px){.sede-card{grid-template-columns:1fr}.hero-badge{display:none}.nav-links a{display:none}}
-@media(max-width:600px){.hero-logo-img-wrap{max-width:300px}.planes-grid{grid-template-columns:1fr 1fr}.disc-grid{grid-template-columns:1fr}.modal-card{padding:32px 24px 28px}.mock-counters{display:none}}
+/* ── REGISTRO GRID ── */
+.reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE — TABLET  (≤1000px)
+═══════════════════════════════════════ */
+@media(max-width:1000px){
+  .plat-inner{grid-template-columns:1fr}
+  .plat-visual{max-width:600px;margin:0 auto;width:100%}
+}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE — TABLET  (≤900px)
+═══════════════════════════════════════ */
+@media(max-width:900px){
+  /* Navbar */
+  .nav-links{display:none}
+  .nav-mobile{display:flex}
+  .nav-inner{padding:0 20px}
+
+  /* Sede */
+  .sede-card{grid-template-columns:1fr}
+
+  /* Hero badge */
+  .hero-badge{display:none}
+
+  /* Sections */
+  .sede-section,.planes-section,.disciplinas-section,.plataforma-section{padding:72px 0}
+}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE — MÓVIL  (≤600px)
+═══════════════════════════════════════ */
+@media(max-width:600px){
+  /* Navbar */
+  .nav-inner{height:56px;padding:0 16px}
+  .logo-svg{width:100px}
+  .btn-nav-login{font-size:.75rem;padding:7px 14px;letter-spacing:.1em}
+
+  /* Hero */
+  .hero{padding:80px 16px 60px;min-height:auto}
+  .hero-logo-img-wrap{max-width:100%}
+  .hero-sub{font-size:.85rem;margin-bottom:28px}
+  .hero-ctas{flex-direction:column;gap:12px}
+  .btn-primary,.btn-secondary{width:100%;text-align:center;padding:14px 20px;font-size:.85rem}
+
+  /* Sections padding & lateral */
+  .section-inner{padding:0 16px}
+  .sede-section,.planes-section,.disciplinas-section,.plataforma-section{padding:56px 0}
+  .section-sub{margin-bottom:32px}
+
+  /* Sede */
+  .sede-card{padding:24px 16px;gap:20px}
+  .sede-map-placeholder{min-height:160px}
+  .btn-sede{width:100%;text-align:center}
+
+  /* Planes — 1 columna en móvil */
+  .planes-grid{grid-template-columns:1fr}
+  .plan-card{padding:28px 20px}
+
+  /* Disciplinas */
+  .disc-grid{grid-template-columns:1fr}
+  .disc-img-wrap{height:180px}
+
+  /* Plataforma mock — ocultar sidebar para no aplastar */
+  .mock-sidebar{display:none}
+  .mock-layout{min-height:auto}
+  .mock-counters{position:static;margin-top:4px}
+  .mock-plan-dates{gap:6px}
+  .screen-mock{font-size:90%}
+
+  /* Footer */
+  .footer-inner{flex-direction:column;gap:20px;padding:0 16px 24px}
+  .footer-links{flex-direction:row;flex-wrap:wrap;gap:14px}
+  .footer-copy{padding:16px 16px 0;text-align:center}
+
+  /* Modal */
+  .modal-card{padding:28px 18px 24px}
+  .modal-header h1{font-size:1.3rem}
+  .modal-overlay{padding:12px;align-items:flex-start}
+
+  /* Registro grid → 1 columna */
+  .reg-grid{grid-template-columns:1fr}
+}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE — MÓVIL PEQUEÑO  (≤380px)
+═══════════════════════════════════════ */
+@media(max-width:380px){
+  .hero{padding:72px 12px 48px}
+  .section-inner{padding:0 12px}
+  .modal-card{padding:24px 14px 20px}
+  .plan-card{padding:22px 14px}
+  .mock-cal-cell{font-size:.48rem}
+}
 </style>

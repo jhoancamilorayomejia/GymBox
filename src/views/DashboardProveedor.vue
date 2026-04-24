@@ -21,10 +21,16 @@ const LABEL_PLANES = { dia: 'Día', semana: 'Semana', mes: 'Mes', anio: 'Año' }
 const ICON_PLANES  = { dia: '☀️', semana: '📅', mes: '🗓', anio: '⚡' }
 
 const parseFechaLocal = (fechaStr) => {
-  const [year, month, day] = fechaStr.split('T')[0].split('-')
+  if (!fechaStr) return null
+  const partes = fechaStr.split('T')[0].split('-')
+  if (partes.length !== 3) return null
+
+  const [year, month, day] = partes.map(Number)
   return new Date(year, month - 1, day)
 }
+
 const normalizar = (fechaStr) => {
+  if (!fechaStr) return null
   const d = parseFechaLocal(fechaStr)
   d.setHours(0,0,0,0)
   return d
@@ -162,22 +168,24 @@ const obtenerPricePlans = async () => {
 }
 
 const cumpleRango = (fecha, inicio, fin) => {
-  if (!inicio && !fin) return true
+  if (!fecha) return false // 👈 clave
 
   const f = normalizar(fecha)
+  if (!f) return false
 
   if (inicio) {
     const i = normalizar(inicio)
-    if (f < i) return false
+    if (i && f < i) return false
   }
 
   if (fin) {
     const f2 = normalizar(fin)
-    if (f > f2) return false
+    if (f2 && f > f2) return false
   }
 
   return true
 }
+
 //agregado reciente
 const planesActivos = computed(() => {
   const hoy = hoyMidnight()

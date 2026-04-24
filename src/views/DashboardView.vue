@@ -399,8 +399,9 @@ onMounted(() => { obtenerUsuarios() })
         <div class="topbar-user">
           <div class="user-avatar">{{ username.charAt(0).toUpperCase() }}</div>
           <span class="user-name">{{ username }}</span>
-          <button class="logout-btn" @click="cerrarSesion" title="Cerrar sesión">
+          <button class="logout-btn" @click="cerrarSesion">
             <svg viewBox="0 0 20 20" fill="none"><path d="M13 3h4v14h-4M9 14l4-4-4-4M13 10H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="logout-txt">Cerrar Sesión</span>
           </button>
         </div>
       </div>
@@ -428,15 +429,32 @@ onMounted(() => { obtenerUsuarios() })
       </div>
 
       <!-- Filtros -->
-      <div class="filters-bar">
-        <div class="search-wrap">
-          <svg class="search-icon" viewBox="0 0 20 20" fill="none">
-            <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
-          <input v-model="busqueda" type="text"
-            :placeholder="vista === 'usuarios' ? 'Buscar usuario, rol o ID...' : 'Buscar nombre, cédula...'"
-            class="search-input" />
+      <div class="filters-section">
+        <div class="filters-row">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <input v-model="busqueda" type="text"
+              :placeholder="vista === 'usuarios' ? 'Buscar usuario, rol o ID...' : 'Buscar nombre, cédula...'"
+              class="search-input" />
+          </div>
+          <!-- Botones de acción en móvil (inline con buscador) -->
+          <div class="mobile-action-btns">
+            <button v-if="vista === 'usuarios'" class="mob-action-btn" @click="showModal = true; resetNewUser()">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span>Nuevo Admin</span>
+            </button>
+            <button v-if="vista === 'clientes'" class="mob-action-btn" @click="showCreateCustomerModal = true; resetNewCustomer()">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span>Nuevo Cliente</span>
+            </button>
+            <button class="mob-action-btn mob-prices-btn" @click="abrirPricePlanModal">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.4"/></svg>
+              <span>Precios</span>
+            </button>
+          </div>
         </div>
         <div class="rol-filters" v-if="vista === 'usuarios'">
           <button class="rol-chip" :class="{ active: filtroRol === 'todos' }" @click="filtroRol = 'todos'">Todos</button>
@@ -938,7 +956,7 @@ onMounted(() => { obtenerUsuarios() })
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --topbar-h: 60px;
+  --topbar-h: 64px;
   --gold: #f5c500;
   --orange: #ff7a00;
   --bg: #0a0a0a;
@@ -1005,23 +1023,23 @@ onMounted(() => { obtenerUsuarios() })
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 100%;
-  padding: 0 18px;
+  padding: 0 22px;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   color: #555;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: .82rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: .14em;
+  letter-spacing: .16em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all .2s;
   white-space: nowrap;
 }
-.nav-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+.nav-tab svg { width: 17px; height: 17px; flex-shrink: 0; }
 .nav-tab:hover { color: #ccc; background: rgba(245,197,0,.04); }
 .nav-tab.active {
   color: var(--gold);
@@ -1092,16 +1110,25 @@ onMounted(() => { obtenerUsuarios() })
 }
 .logout-btn {
   background: none;
-  border: 1px solid #1e1e1e;
-  color: #444;
+  border: 1px solid rgba(220,50,30,.3);
+  color: #e05a45;
   cursor: pointer;
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
   flex-shrink: 0;
   transition: all .2s;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.logout-btn svg { width: 14px; height: 14px; }
-.logout-btn:hover { border-color: rgba(245,197,0,.4); color: var(--gold); }
+.logout-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.logout-txt { }
+.logout-btn:hover { border-color: rgba(220,50,30,.7); background: rgba(220,50,30,.08); color: #ff6b50; }
 
 /* ══════════════════════════════════════
    MAIN
@@ -1150,16 +1177,20 @@ onMounted(() => { obtenerUsuarios() })
 }
 
 /* Filtros */
-.filters-bar {
+.filters-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.filters-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
 .search-wrap {
   position: relative;
   flex: 1;
-  min-width: 200px;
+  min-width: 0;
   max-width: 480px;
 }
 .search-icon {
@@ -1201,6 +1232,24 @@ onMounted(() => { obtenerUsuarios() })
 }
 .rol-chip:hover { border-color: rgba(245,197,0,.4); color: #ccc; }
 .rol-chip.active { background: rgba(245,197,0,.1); border-color: var(--gold); color: var(--gold); }
+
+/* Botones de acción móvil (ocultos en desktop) */
+.mobile-action-btns { display: none; gap: 6px; flex-shrink: 0; }
+.mob-action-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(245,197,0,.08);
+  border: 1px solid rgba(245,197,0,.3);
+  color: var(--gold);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  padding: 7px 10px;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.mob-action-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.mob-action-btn:hover { background: rgba(245,197,0,.16); border-color: var(--gold); }
+.mob-prices-btn { border-color: rgba(245,197,0,.2); color: #c9a200; background: rgba(245,197,0,.04); }
+.mob-prices-btn:hover { background: rgba(245,197,0,.1); border-color: rgba(245,197,0,.4); color: var(--gold); }
 
 /* ── Estado loading/error ── */
 .state-box {
@@ -1614,6 +1663,8 @@ td {
   .action-quick span { display: none; }
   .action-quick { padding: 7px 10px; }
   .user-name { display: none; }
+  .logout-txt { display: none; }
+  .logout-btn { padding: 6px 8px; }
 }
 
 /* Móvil */
@@ -1623,48 +1674,56 @@ td {
   /* Topbar compacta */
   .topbar { padding: 0 12px; gap: 0; }
   .topbar-logo { padding-right: 10px; }
-  .topbar-logo svg { width: 80px; }
+  .topbar-logo svg { width: 76px; }
 
-  .topbar-nav { padding-left: 4px; }
-  .nav-tab { padding: 0 10px; font-size: .75rem; gap: 5px; }
-  .nav-tab svg { width: 13px; height: 13px; }
+  /* Tabs más grandes en móvil */
+  .topbar-nav { padding-left: 2px; }
+  .nav-tab { padding: 0 14px; font-size: .92rem; letter-spacing: .12em; gap: 6px; }
+  .nav-tab svg { width: 15px; height: 15px; }
 
-  .action-quick { display: none; }  /* ocultamos en topbar en móvil */
+  /* Ocultar botones de acción del topbar en móvil */
+  .action-quick { display: none; }
 
-  .topbar-user { padding-left: 8px; }
+  /* Usuario en topbar: solo logout compacto */
+  .topbar-user { padding-left: 8px; gap: 6px; }
   .user-name { display: none; }
+  .user-avatar { width: 26px; height: 26px; font-size: .8rem; }
+  .logout-txt { display: none; }
+  .logout-btn { padding: 5px 7px; border-color: rgba(220,50,30,.25); }
 
   /* Main */
-  .main { padding: 14px 12px 20px; gap: 12px; }
+  .main { padding: 14px 12px 24px; gap: 12px; }
 
-  /* Stats row horizontal */
+  /* Stats row */
   .stats-row { gap: 8px; }
   .stat-pill { padding: 6px 14px; }
   .stat-val { font-size: 1.2rem; }
 
-  /* Filters: búsqueda full width, acciones inline */
-  .filters-bar {
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
-  .search-wrap { min-width: 0; flex: 1; }
+  /* Filters section */
+  .filters-section { gap: 8px; }
+  .filters-row { flex-wrap: nowrap; gap: 8px; }
+  .search-wrap { max-width: 100%; flex: 1; min-width: 0; }
   .search-input { font-size: .8rem; }
 
-  /* Botones de acción inline en móvil (debajo del filtro) */
-  .filters-bar::after { display: none; }
+  /* Mostrar botones de acción móvil */
+  .mobile-action-btns { display: flex; }
+  /* En móvil ocultar texto de los botones de acción para ahorrar espacio */
+  .mob-action-btn span { display: none; }
+  .mob-action-btn { padding: 7px 9px; }
 
-  /* Cards visibles, tabla oculta */
-  .mobile-only  { display: flex !important; flex-direction: column; }
-  .desktop-only { display: none !important; }
-
-  /* Rol chips */
+  /* Rol chips en segunda fila */
   .rol-filters {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 2px;
     width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
-  .rol-chip { white-space: nowrap; padding: 6px 12px; font-size: .68rem; }
+  .rol-chip { white-space: nowrap; padding: 8px 16px; font-size: .75rem; }
+
+  /* Cards visibles, tabla oculta */
+  .mobile-only  { display: flex !important; flex-direction: column; }
+  .desktop-only { display: none !important; }
 
   /* Modales desde abajo */
   .modal-overlay { padding: 0; align-items: flex-end; }
@@ -1685,8 +1744,8 @@ td {
 
 /* Móvil pequeño */
 @media (max-width: 400px) {
-  .topbar-logo svg { width: 70px; }
-  .nav-tab { padding: 0 8px; font-size: .7rem; letter-spacing: .08em; }
+  .topbar-logo svg { width: 66px; }
+  .nav-tab { padding: 0 10px; font-size: .82rem; letter-spacing: .08em; }
   .main { padding: 12px 10px 16px; }
 }
 </style>

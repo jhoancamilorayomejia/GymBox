@@ -13,7 +13,6 @@ const busqueda  = ref('')
 const filtroRol = ref('todos')
 
 const username = localStorage.getItem('username') || 'Admin'
-//const id       = localStorage.getItem('id') || ''
 
 // ── Auth ──────────────────────────────────────────────────────────
 
@@ -58,8 +57,13 @@ const obtenerClientes = async () => {
     const token = getToken(); if (!token) return
     const res = await fetch('/api/customers', { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) throw new Error('Error al cargar clientes')
-    customers.value = await res.json()
-  } catch (err) { errorMsg.value = err.message }
+    const data = await res.json()
+    // ✅ Siempre asignar array, aunque esté vacío
+    customers.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    errorMsg.value = err.message
+    customers.value = [] // ✅ tabla visible aunque falle
+  }
   finally { loading.value = false }
 }
 
@@ -229,7 +233,6 @@ const eliminarCustomer = async (id) => {
 
 // ── Price Plans ───────────────────────────────────────────────────
 
-// Metadatos visuales por tipo de plan
 const PLAN_META = {
   dia:    { label: 'Día',    icon: '☀', color: '#ff7a00', bg: 'rgba(255,122,0,.08)',   border: 'rgba(255,122,0,.35)'   },
   semana: { label: 'Semana', icon: '📅', color: '#f5c500', bg: 'rgba(245,197,0,.08)',   border: 'rgba(245,197,0,.35)'   },
@@ -457,17 +460,19 @@ onMounted(() => { obtenerUsuarios() })
           </div>
         </div>
 
-        <!-- Loading / Error -->
+        <!-- ✅ Loading -->
         <div v-if="loading" class="state-box">
           <div class="bolt-spin">⚡</div>
           <p>Cargando datos...</p>
         </div>
-        <div v-else-if="errorMsg" class="state-box error-state">
+
+        <!-- ✅ Error solo bloquea usuarios, clientes siempre muestra tabla -->
+        <div v-else-if="errorMsg && vista === 'usuarios'" class="state-box error-state">
           <span>⚠</span><p>{{ errorMsg }}</p>
-          <button class="retry-btn" @click="vista === 'usuarios' ? obtenerUsuarios() : obtenerClientes()">Reintentar</button>
+          <button class="retry-btn" @click="obtenerUsuarios()">Reintentar</button>
         </div>
 
-        <!-- Tabla -->
+        <!-- ✅ Tabla siempre visible cuando no está cargando -->
         <div v-else class="table-wrapper">
           <div class="table-scroll">
 
@@ -512,7 +517,6 @@ onMounted(() => { obtenerUsuarios() })
             <table v-else>
               <thead>
                 <tr>
-                  <!--th>ID</th-->
                   <th>Cédula</th>
                   <th>Nombre</th>
                   <th>Apellido</th>
@@ -525,7 +529,6 @@ onMounted(() => { obtenerUsuarios() })
               <tbody>
                 <tr v-for="(c, i) in clientesFiltrados" :key="c.idcustomer"
                     class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
-                  <!--td><span class="id-badge-sm">{{ c.idcustomer }}</span></td-->
                   <td>{{ c.cedula }}</td>
                   <td>
                     <div class="user-cell">
@@ -554,12 +557,30 @@ onMounted(() => { obtenerUsuarios() })
                     </button>
                   </td>
                 </tr>
-                <tr v-if="!clientesFiltrados.length">
-                  <td colspan="8" class="empty-row">⚡ No hay clientes registrados</td>
+
+                <!-- ✅ Mensaje cuando no hay clientes -->
+                <tr v-if="!clientesFiltrados.length && !busqueda">
+                  <td colspan="7" class="empty-row">
+                    <div class="empty-clientes">
+                      <span class="empty-icon">👥</span>
+                      <p class="empty-titulo">No hay clientes registrados</p>
+                      <p class="empty-sub">Crea el primer cliente usando el botón "Nuevo Cliente" en el menú lateral.</p>
+                    </div>
+                  </td>
                 </tr>
+                <tr v-else-if="!clientesFiltrados.length && busqueda">
+                  <td colspan="7" class="empty-row">⚡ Sin resultados para "{{ busqueda }}"</td>
+                </tr>
+
               </tbody>
             </table>
 
+          </div>
+
+          <!-- ✅ Error de clientes como banner dentro de la tabla, no bloquea -->
+          <div v-if="errorMsg && vista === 'clientes'" class="clientes-error-banner">
+            <span>⚠</span> {{ errorMsg }}
+            <button class="retry-inline" @click="obtenerClientes()">Reintentar</button>
           </div>
 
           <div class="table-footer">
@@ -753,14 +774,10 @@ onMounted(() => { obtenerUsuarios() })
       </div>
     </transition>
 
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!-- Modal: Precios del Plan — diseño tarjetas                  -->
-    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- Modal: Precios del Plan -->
     <transition name="modal-fade">
       <div v-if="showPricePlanModal" class="modal-overlay" @click.self="showPricePlanModal = false; cancelarEditarPrecio()">
         <div class="modal-box pp-modal">
-
-          <!-- Header -->
           <div class="modal-header pp-header">
             <div>
               <span class="modal-eyebrow">⚡ Tarifas activas</span>
@@ -768,24 +785,16 @@ onMounted(() => { obtenerUsuarios() })
             </div>
             <button class="modal-close" @click="showPricePlanModal = false; cancelarEditarPrecio()">✕</button>
           </div>
-
-          <!-- Body -->
           <div class="modal-body pp-body">
-
-            <!-- Loading -->
             <div v-if="loadingPrices" class="pp-state">
               <div class="bolt-spin">⚡</div>
               <p>Cargando tarifas...</p>
             </div>
-
-            <!-- Error carga -->
             <div v-else-if="priceError" class="pp-state pp-state--error">
               <span class="pp-state-icon">⚠</span>
               <p>{{ priceError }}</p>
               <button class="retry-btn" @click="obtenerPricePlans">Reintentar</button>
             </div>
-
-            <!-- Grid de tarjetas -->
             <div v-else class="pp-grid">
               <div
                 v-for="(plan, idx) in sortedPricePlans"
@@ -799,10 +808,7 @@ onMounted(() => { obtenerUsuarios() })
                   animationDelay: idx * 70 + 'ms'
                 }"
               >
-                <!-- Franja de color superior -->
                 <div class="pp-card-bar"></div>
-
-                <!-- Cabecera de la tarjeta -->
                 <div class="pp-card-head">
                   <span class="pp-icon">{{ getMeta(plan.typeplan).icon }}</span>
                   <div class="pp-card-head-text">
@@ -810,80 +816,45 @@ onMounted(() => { obtenerUsuarios() })
                     <span class="pp-id">#{{ plan.idpriceplan }}</span>
                   </div>
                 </div>
-
-                <!-- Área del precio -->
                 <div class="pp-price-area">
-
-                  <!-- Modo visualización -->
                   <template v-if="editingPriceId !== plan.idpriceplan">
                     <p class="pp-price">{{ formatPrice(plan.price) }}</p>
                     <p class="pp-price-desc">por {{ getMeta(plan.typeplan).label.toLowerCase() }}</p>
                   </template>
-
-                  <!-- Modo edición -->
                   <template v-else>
                     <div class="pp-edit-box">
                       <span class="pp-currency">$</span>
-                      <input
-                        v-model="editingPrice"
-                        type="number"
-                        min="0"
-                        step="100"
-                        class="pp-input"
-                        @keyup.enter="guardarPrecio(plan)"
-                        @keyup.esc="cancelarEditarPrecio"
-                      />
+                      <input v-model="editingPrice" type="number" min="0" step="100" class="pp-input"
+                        @keyup.enter="guardarPrecio(plan)" @keyup.esc="cancelarEditarPrecio" />
                     </div>
                     <p class="pp-edit-hint">↵ guardar &nbsp;·&nbsp; Esc cancelar</p>
                   </template>
                 </div>
-
-                <!-- Botones de acción -->
                 <div class="pp-actions">
-
-                  <!-- Estado normal -->
                   <template v-if="editingPriceId !== plan.idpriceplan">
                     <button class="pp-btn pp-btn--edit" @click="iniciarEditarPrecio(plan)">
-                      <svg viewBox="0 0 20 20" fill="none">
-                        <path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                      </svg>
+                      <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
                       Cambiar valor
                     </button>
                   </template>
-
-                  <!-- Estado edición -->
                   <template v-else>
                     <button class="pp-btn pp-btn--save" @click="guardarPrecio(plan)" :disabled="savingPrice">
-                      <svg viewBox="0 0 20 20" fill="none">
-                        <path d="M4 10l4.5 4.5L16 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
+                      <svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4.5 4.5L16 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                       {{ savingPrice ? 'Guardando...' : 'Guardar' }}
                     </button>
                     <button class="pp-btn pp-btn--cancel" @click="cancelarEditarPrecio">
-                      <svg viewBox="0 0 20 20" fill="none">
-                        <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      </svg>
+                      <svg viewBox="0 0 20 20" fill="none"><path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </button>
                   </template>
-
                 </div>
-              </div><!-- /pp-card -->
-
-              <!-- Sin planes -->
-              <div v-if="!sortedPricePlans.length" class="pp-empty">
-                ⚡ No hay planes registrados
               </div>
-            </div><!-- /pp-grid -->
-
-            <!-- Error al guardar -->
+              <div v-if="!sortedPricePlans.length" class="pp-empty">⚡ No hay planes registrados</div>
+            </div>
             <p v-if="savePriceError" class="modal-error pp-save-err">⚠ {{ savePriceError }}</p>
-
-          </div><!-- /pp-body -->
-
+          </div>
           <div class="modal-footer">
             <button class="btn-cancel" @click="showPricePlanModal = false; cancelarEditarPrecio()">Cerrar</button>
           </div>
-
         </div>
       </div>
     </transition>
@@ -898,7 +869,6 @@ onMounted(() => { obtenerUsuarios() })
 
 .screen { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0a; font-family: 'Barlow', sans-serif; position: relative; }
 
-/* ── Fondo ── */
 .bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .hex { position: absolute; }
 .hex-1 { width: 420px; height: 420px; background: conic-gradient(from 30deg,rgba(245,197,0,.08) 0deg,rgba(255,122,0,.06) 80deg,transparent 80deg); clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); top: -100px; right: -80px; }
@@ -908,10 +878,8 @@ onMounted(() => { obtenerUsuarios() })
 .slash-2 { width: 1px; height: 40vh; background: linear-gradient(to bottom,transparent,rgba(255,122,0,.08) 50%,transparent); top: 30%; left: 230px; transform: rotate(12deg); }
 .noise { position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E"); opacity: .02; }
 
-/* ── Layout ── */
 .layout { position: relative; z-index: 1; display: flex; width: 100%; height: 100vh; }
 
-/* ── Sidebar ── */
 .sidebar { width: 230px; height: 100vh; background: #0d0d0d; border-right: 1px solid rgba(245,197,0,.1); display: flex; flex-direction: column; padding: 32px 0 24px; flex-shrink: 0; }
 .sidebar-logo { padding: 0 24px 28px; border-bottom: 1px solid rgba(245,197,0,.08); margin-bottom: 24px; }
 .sidebar-logo svg { width: 130px; height: auto; filter: drop-shadow(0 0 18px rgba(245,197,0,.18)); }
@@ -936,7 +904,6 @@ onMounted(() => { obtenerUsuarios() })
 .logout-btn svg { width: 15px; height: 15px; }
 .logout-btn:hover { border-color: rgba(245,197,0,.4); color: #f5c500; }
 
-/* ── Main ── */
 .main { flex: 1; height: 100vh; overflow-y: auto; padding: 48px 60px; display: flex; flex-direction: column; gap: 26px; min-width: 0; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; flex-shrink: 0; }
 .page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 6px; }
@@ -978,7 +945,6 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .user-cell { display: flex; align-items: center; gap: 10px; }
 .avatar { width: 32px; height: 32px; background: linear-gradient(135deg,rgba(245,197,0,.2),rgba(255,122,0,.15)); border: 1px solid rgba(245,197,0,.2); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pass-dots { color: #2a2a2a; letter-spacing: .15em; font-size: .85rem; }
-.id-badge-sm { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 6px; background: rgba(245,197,0,.07); border: 1px solid rgba(245,197,0,.18); font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: .75rem; color: #f5c500; }
 .role-badge { display: inline-block; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 4px 12px; border: 1px solid; }
 .badge-admin    { color: #f5c500; border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
 .badge-customer { color: #ff7a00; border-color: rgba(255,122,0,.4); background: rgba(255,122,0,.07); }
@@ -994,7 +960,19 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .btn-plan { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid rgba(245,197,0,.3); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; transition: all .2s; white-space: nowrap; }
 .btn-plan svg { width: 12px; height: 12px; flex-shrink: 0; }
 .btn-plan:hover { background: rgba(245,197,0,.1); border-color: #f5c500; }
+
+/* ✅ Empty state clientes */
 .empty-row { text-align: center; color: #444; padding: 56px 20px !important; font-size: .88rem; letter-spacing: .05em; }
+.empty-clientes { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty-icon { font-size: 2.2rem; opacity: .3; filter: grayscale(1); }
+.empty-titulo { font-family: 'Barlow Condensed',sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #333; }
+.empty-sub { font-size: .75rem; color: #2a2a2a; max-width: 320px; line-height: 1.5; }
+
+/* ✅ Banner error clientes (no bloquea la vista) */
+.clientes-error-banner { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: rgba(220,50,30,.06); border-top: 1px solid rgba(220,50,30,.2); color: #e05a45; font-size: .78rem; flex-shrink: 0; }
+.retry-inline { background: none; border: 1px solid rgba(220,50,30,.35); color: #e05a45; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; padding: 4px 12px; cursor: pointer; transition: all .2s; margin-left: auto; }
+.retry-inline:hover { background: rgba(220,50,30,.1); }
+
 .table-footer { padding: 13px 20px; border-top: 1px solid rgba(245,197,0,.08); font-size: .7rem; color: #444; letter-spacing: .06em; flex-shrink: 0; }
 .table-footer strong { color: #888; }
 
@@ -1029,231 +1007,43 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .22s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 
-/* ══════════════════════════════════════════════════════════════════
-   PRICE PLAN MODAL — tarjetas rediseñadas
-══════════════════════════════════════════════════════════════════ */
-
+/* ══ PRICE PLAN MODAL ══ */
 .pp-modal  { max-width: 620px; }
 .pp-header { background: linear-gradient(160deg, #0e0e0e 0%, #110f06 100%); }
 .pp-body   { padding: 20px 20px 10px; }
-
-/* Grid 2 columnas */
-.pp-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-/* ── Tarjeta ── */
-.pp-card {
-  position: relative;
-  background: #0d0d0d;
-  border: 1px solid var(--br);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: box-shadow .25s, border-color .25s, transform .2s;
-  animation: ppCardIn .4s cubic-bezier(.16,1,.3,1) both;
-}
-@keyframes ppCardIn {
-  from { opacity: 0; transform: translateY(14px) scale(.96); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.pp-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--c) 14%, transparent),
-              0 0 0 1px var(--br);
-}
-
-.pp-card--active {
-  border-color: var(--c) !important;
-  box-shadow: 0 0 0 1px var(--c),
-              0 10px 40px color-mix(in srgb, var(--c) 20%, transparent) !important;
-}
-
-/* Franja superior de color */
-.pp-card-bar {
-  height: 3px;
-  background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 40%, transparent));
-}
-
-/* Cabecera de tarjeta */
-.pp-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px 6px;
-}
-
-.pp-icon {
-  font-size: 1.5rem;
-  line-height: 1;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 55%, transparent));
-}
-
-.pp-card-head-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-
-.pp-type {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  color: var(--c);
-  line-height: 1;
-}
-
-.pp-id {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .58rem;
-  letter-spacing: .18em;
-  color: #333;
-  text-transform: uppercase;
-}
-
-/* Área de precio */
-.pp-price-area {
-  padding: 8px 16px 14px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  /* Línea divisora sutil */
-  border-top: 1px solid rgba(255,255,255,.04);
-  margin: 0 12px;
-}
-
-.pp-price {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.8rem;
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: .01em;
-  line-height: 1;
-}
-
-.pp-price-desc {
-  font-size: .65rem;
-  color: #3a3a3a;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-/* Modo edición */
-.pp-edit-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #070707;
-  border: 1px solid var(--c);
-  padding: 6px 10px;
-}
-
-.pp-currency {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 900;
-  font-size: 1.1rem;
-  color: var(--c);
-  line-height: 1;
-}
-
-.pp-input {
-  background: transparent;
-  border: none;
-  color: #f0f0f0;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 700;
-  outline: none;
-  width: 100%;
-  min-width: 0;
-  line-height: 1;
-}
-
-.pp-input::-webkit-inner-spin-button,
-.pp-input::-webkit-outer-spin-button { opacity: .2; }
-
-.pp-edit-hint {
-  font-size: .58rem;
-  color: #2e2e2e;
-  letter-spacing: .06em;
-  margin-top: 4px;
-}
-
-/* Botones */
-.pp-actions {
-  display: flex;
-  gap: 6px;
-  padding: 0 12px 12px;
-}
-
-/* Botón base */
-.pp-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .2s;
-  padding: 9px 14px;
-  border: 1px solid;
-}
-
+.pp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.pp-card { position: relative; background: #0d0d0d; border: 1px solid var(--br); display: flex; flex-direction: column; overflow: hidden; transition: box-shadow .25s, border-color .25s, transform .2s; animation: ppCardIn .4s cubic-bezier(.16,1,.3,1) both; }
+@keyframes ppCardIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.pp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px color-mix(in srgb, var(--c) 14%, transparent), 0 0 0 1px var(--br); }
+.pp-card--active { border-color: var(--c) !important; box-shadow: 0 0 0 1px var(--c), 0 10px 40px color-mix(in srgb, var(--c) 20%, transparent) !important; }
+.pp-card-bar { height: 3px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 40%, transparent)); }
+.pp-card-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px; }
+.pp-icon { font-size: 1.5rem; line-height: 1; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 55%, transparent)); }
+.pp-card-head-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.pp-type { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 900; text-transform: uppercase; letter-spacing: .14em; color: var(--c); line-height: 1; }
+.pp-id { font-family: 'Barlow Condensed', sans-serif; font-size: .58rem; letter-spacing: .18em; color: #333; text-transform: uppercase; }
+.pp-price-area { padding: 8px 16px 14px; flex: 1; display: flex; flex-direction: column; gap: 3px; border-top: 1px solid rgba(255,255,255,.04); margin: 0 12px; }
+.pp-price { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 900; color: #fff; letter-spacing: .01em; line-height: 1; }
+.pp-price-desc { font-size: .65rem; color: #3a3a3a; letter-spacing: .12em; text-transform: uppercase; }
+.pp-edit-box { display: flex; align-items: center; gap: 6px; background: #070707; border: 1px solid var(--c); padding: 6px 10px; }
+.pp-currency { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.1rem; color: var(--c); line-height: 1; }
+.pp-input { background: transparent; border: none; color: #f0f0f0; font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 700; outline: none; width: 100%; min-width: 0; line-height: 1; }
+.pp-input::-webkit-inner-spin-button, .pp-input::-webkit-outer-spin-button { opacity: .2; }
+.pp-edit-hint { font-size: .58rem; color: #2e2e2e; letter-spacing: .06em; margin-top: 4px; }
+.pp-actions { display: flex; gap: 6px; padding: 0 12px 12px; }
+.pp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; cursor: pointer; transition: all .2s; padding: 9px 14px; border: 1px solid; }
 .pp-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
-
-/* Cambiar valor */
-.pp-btn--edit {
-  width: 100%;
-  background: var(--bg);
-  border-color: var(--br);
-  color: var(--c);
-}
-.pp-btn--edit:hover {
-  background: color-mix(in srgb, var(--c) 16%, transparent);
-  border-color: var(--c);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 20%, transparent);
-}
-
-/* Guardar */
-.pp-btn--save {
-  flex: 1;
-  background: var(--c);
-  border-color: var(--c);
-  color: #0a0a0a;
-  font-weight: 900;
-}
+.pp-btn--edit { width: 100%; background: var(--bg); border-color: var(--br); color: var(--c); }
+.pp-btn--edit:hover { background: color-mix(in srgb, var(--c) 16%, transparent); border-color: var(--c); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 20%, transparent); }
+.pp-btn--save { flex: 1; background: var(--c); border-color: var(--c); color: #0a0a0a; font-weight: 900; }
 .pp-btn--save:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); }
 .pp-btn--save:disabled { opacity: .45; cursor: not-allowed; }
-
-/* Cancelar (solo icono) */
-.pp-btn--cancel {
-  background: transparent;
-  border-color: #1e1e1e;
-  color: #555;
-  padding: 9px 11px;
-}
+.pp-btn--cancel { background: transparent; border-color: #1e1e1e; color: #555; padding: 9px 11px; }
 .pp-btn--cancel:hover { border-color: rgba(220,50,30,.4); color: #e05a45; }
-
-/* Loading / error dentro del modal */
 .pp-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 20px; color: #555; font-size: .88rem; }
 .pp-state--error { color: #e05a45; }
 .pp-state-icon { font-size: 1.8rem; }
-
-/* Sin planes */
 .pp-empty { grid-column: span 2; text-align: center; color: #333; padding: 40px 20px; font-size: .88rem; letter-spacing: .05em; }
-
-/* Error al guardar */
 .pp-save-err { margin-top: 14px; }
 
 @media (max-width: 860px) {

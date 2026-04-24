@@ -14,12 +14,8 @@ const filtroRol = ref('todos')
 
 const username = localStorage.getItem('username') || 'Admin'
 
-// ── Sidebar móvil ─────────────────────────────────────────────────
-const sidebarOpen = ref(false)
-const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value }
-const closeSidebar  = () => { sidebarOpen.value = false }
-
 // ── Auth ──────────────────────────────────────────────────────────
+
 const tokenExpirado = (token) => {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
@@ -42,6 +38,7 @@ const getToken = () => {
 }
 
 // ── Fetch ─────────────────────────────────────────────────────────
+
 const obtenerUsuarios = async () => {
   loading.value = true; errorMsg.value = ''
   try {
@@ -61,17 +58,17 @@ const obtenerClientes = async () => {
     const res = await fetch('/api/customers', { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) throw new Error('Error al cargar clientes')
     const data = await res.json()
+    // ✅ Siempre asignar array, aunque esté vacío
     customers.value = Array.isArray(data) ? data : []
   } catch (err) {
     errorMsg.value = err.message
-    customers.value = []
+    customers.value = [] // ✅ tabla visible aunque falle
   }
   finally { loading.value = false }
 }
 
 const cambiarVista = (tipo) => {
   vista.value = tipo; busqueda.value = ''
-  closeSidebar()
   if (tipo === 'usuarios') obtenerUsuarios()
   else obtenerClientes()
 }
@@ -85,12 +82,13 @@ const verPlanes = (cliente) => {
 }
 
 // ── CRUD Usuarios ─────────────────────────────────────────────────
+
 const showModal      = ref(false)
 const showEditModal  = ref(false)
 const modalError     = ref('')
 const guardandoUser  = ref(false)
 
-const newUser  = ref({ username: '', password: '', confirmPassword: '' })
+const newUser = ref({ username: '', password: '', confirmPassword: '' })
 const editUser = ref({ id: null, username: '', password: '', confirmPassword: '' })
 
 const resetNewUser  = () => { newUser.value  = { username: '', password: '', confirmPassword: '' }; modalError.value = '' }
@@ -155,12 +153,13 @@ const eliminarUsuario = async (id) => {
 }
 
 // ── CRUD Clientes ─────────────────────────────────────────────────
+
 const showCreateCustomerModal = ref(false)
 const showEditCustomerModal   = ref(false)
 const modalCustomerError      = ref('')
 const guardandoCustomer       = ref(false)
 
-const newCustomer  = ref({ cedula: '', name: '', lastname: '', phone: '', password: '', confirmPassword: '' })
+const newCustomer = ref({ cedula: '', name: '', lastname: '', phone: '', password: '', confirmPassword: '' })
 const editCustomer = ref({ idcustomer: null, cedula: '', name: '', lastname: '', phone: '', password: '', confirmPassword: '' })
 
 const resetNewCustomer  = () => { newCustomer.value  = { cedula: '', name: '', lastname: '', phone: '', password: '', confirmPassword: '' }; modalCustomerError.value = '' }
@@ -233,6 +232,7 @@ const eliminarCustomer = async (id) => {
 }
 
 // ── Price Plans ───────────────────────────────────────────────────
+
 const PLAN_META = {
   dia:    { label: 'Día',    icon: '☀', color: '#ff7a00', bg: 'rgba(255,122,0,.08)',   border: 'rgba(255,122,0,.35)'   },
   semana: { label: 'Semana', icon: '📅', color: '#f5c500', bg: 'rgba(245,197,0,.08)',   border: 'rgba(245,197,0,.35)'   },
@@ -289,7 +289,6 @@ const abrirPricePlanModal = () => {
   editingPrice.value   = ''
   savePriceError.value = ''
   obtenerPricePlans()
-  closeSidebar()
 }
 
 const iniciarEditarPrecio = (plan) => {
@@ -328,6 +327,7 @@ const formatPrice = (price) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(price)
 
 // ── Filtrado ──────────────────────────────────────────────────────
+
 const usuariosFiltrados = computed(() =>
   users.value.filter(u => {
     const q = busqueda.value.toLowerCase()
@@ -356,111 +356,76 @@ onMounted(() => { obtenerUsuarios() })
 <template>
   <div class="screen">
 
-    <!-- Background decorativo -->
-    <div class="bg-layer" aria-hidden="true">
-      <div class="hex hex-1"></div>
-      <div class="hex hex-2"></div>
-      <div class="slash slash-1"></div>
-      <div class="slash slash-2"></div>
+    <div class="bg-layer">
+      <div class="hex hex-1"></div><div class="hex hex-2"></div>
+      <div class="slash slash-1"></div><div class="slash slash-2"></div>
       <div class="noise"></div>
     </div>
-
-    <!-- ── Overlay móvil sidebar ── -->
-    <transition name="overlay-fade">
-      <div v-if="sidebarOpen" class="sidebar-overlay" @click="closeSidebar"></div>
-    </transition>
-
-    <!-- ── Topbar móvil ── -->
-    <header class="topbar">
-      <button class="topbar-menu" @click="toggleSidebar" :class="{ open: sidebarOpen }" aria-label="Menú">
-        <span></span><span></span><span></span>
-      </button>
-      <div class="topbar-logo">
-        <svg viewBox="0 0 160 52" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="20,2 12,22 18,22 10,44 32,20 22,20 34,2" fill="#f5c500"/>
-          <text x="38" y="22" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="20" fill="#f5c500" letter-spacing="-0.5">RAYO</text>
-          <text x="38" y="42" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="20" fill="#ffffff" letter-spacing="-0.5">BOX</text>
-        </svg>
-      </div>
-      <div class="topbar-actions">
-        <div class="topbar-stat">
-          <span class="topbar-stat-val">{{ vista === 'usuarios' ? users.length : customers.length }}</span>
-          <span class="topbar-stat-lbl">{{ vista === 'usuarios' ? 'Usuarios' : 'Clientes' }}</span>
-        </div>
-      </div>
-    </header>
 
     <div class="layout">
 
       <!-- ── Sidebar ── -->
-      <aside class="sidebar" :class="{ 'sidebar--open': sidebarOpen }">
-        <div class="sidebar-inner">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="36,4 22,38 32,38 18,72 52,32 38,32 58,4" fill="#f5c500"/>
+            <text x="62" y="36" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="32" fill="#f5c500" letter-spacing="-1">RAYO</text>
+            <text x="62" y="66" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="32" fill="#ffffff" letter-spacing="-1">BOX</text>
+          </svg>
+          <span class="sidebar-sub">CROSS LIFTING</span>
+        </div>
 
-          <div class="sidebar-logo">
-            <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="36,4 22,38 32,38 18,72 52,32 38,32 58,4" fill="#f5c500"/>
-              <text x="62" y="36" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="32" fill="#f5c500" letter-spacing="-1">RAYO</text>
-              <text x="62" y="66" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="32" fill="#ffffff" letter-spacing="-1">BOX</text>
+        <nav class="sidebar-nav">
+          <a class="nav-item" :class="{ active: vista === 'usuarios' }" @click="cambiarVista('usuarios')">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Usuarios
+          </a>
+          <a class="nav-item" :class="{ active: vista === 'clientes' }" @click="cambiarVista('clientes')">
+            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Clientes
+          </a>
+
+          <button class="btn-add" v-if="vista === 'usuarios'" @click="showModal = true; resetNewUser()">
+            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Nuevo Admin
+          </button>
+
+          <button class="btn-add btn-prices" @click="abrirPricePlanModal">
+            <svg viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="5" width="14" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M3 8h14" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M7 12h2M12 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
             </svg>
-            <span class="sidebar-sub">CROSS LIFTING</span>
-          </div>
+            Ver Precios
+          </button>
 
-          <nav class="sidebar-nav">
-            <a class="nav-item" :class="{ active: vista === 'usuarios' }" @click="cambiarVista('usuarios')">
-              <svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              Usuarios
-            </a>
-            <a class="nav-item" :class="{ active: vista === 'clientes' }" @click="cambiarVista('clientes')">
-              <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              Clientes
-            </a>
+          <button class="btn-add" v-if="vista === 'clientes'" @click="showCreateCustomerModal = true; resetNewCustomer()">
+            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Nuevo Cliente
+          </button>
+        </nav>
 
-            <div class="nav-divider"></div>
-
-            <button class="btn-add" v-if="vista === 'usuarios'" @click="showModal = true; resetNewUser(); closeSidebar()">
-              <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Nuevo Admin
-            </button>
-
-            <button class="btn-add" v-if="vista === 'clientes'" @click="showCreateCustomerModal = true; resetNewCustomer(); closeSidebar()">
-              <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Nuevo Cliente
-            </button>
-
-            <button class="btn-add btn-prices" @click="abrirPricePlanModal">
-              <svg viewBox="0 0 20 20" fill="none">
-                <rect x="3" y="5" width="14" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M3 8h14" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M7 12h2M12 12h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-              Ver Precios
-            </button>
-          </nav>
-
-          <div class="sidebar-footer">
-            <div class="user-chip">
-              <div class="user-avatar">{{ username.charAt(0).toUpperCase() }}</div>
-              <div class="user-info">
-                <span class="user-name">{{ username }}</span>
-                <span class="user-role">Administrador</span>
-              </div>
+        <div class="sidebar-footer">
+          <div class="user-chip">
+            <div class="user-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+            <div class="user-info">
+              <span class="user-name">{{ username }}</span>
+              <span class="user-role">Administrador</span>
             </div>
-            <button class="logout-btn" @click="cerrarSesion" title="Cerrar sesión">
-              <svg viewBox="0 0 20 20" fill="none"><path d="M13 3h4v14h-4M9 14l4-4-4-4M13 10H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </div>
-
+          <button class="logout-btn" @click="cerrarSesion" title="Cerrar sesión">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M13 3h4v14h-4M9 14l4-4-4-4M13 10H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </aside>
 
       <!-- ── Main ── -->
       <main class="main">
 
-        <!-- Header desktop -->
         <header class="page-header">
           <div class="page-title">
             <span class="page-eyebrow">⚡ Gestión del sistema</span>
-            <h1>{{ username }}</h1>
+            <h1>{{ username }} <span class="id-hint"></span></h1>
           </div>
           <div class="header-meta">
             <div class="stat-pill">
@@ -478,19 +443,7 @@ onMounted(() => { obtenerUsuarios() })
           </div>
         </header>
 
-        <!-- Tab nav móvil (dentro del main, debajo del topbar) -->
-        <div class="mobile-tabs">
-          <button class="mobile-tab" :class="{ active: vista === 'usuarios' }" @click="cambiarVista('usuarios')">
-            <svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Usuarios
-          </button>
-          <button class="mobile-tab" :class="{ active: vista === 'clientes' }" @click="cambiarVista('clientes')">
-            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Clientes
-          </button>
-        </div>
-
-        <!-- Filtros + acciones -->
+        <!-- Filtros -->
         <div class="filters-bar">
           <div class="search-wrap">
             <svg class="search-icon" viewBox="0 0 20 20" fill="none">
@@ -498,254 +451,146 @@ onMounted(() => { obtenerUsuarios() })
               <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
             </svg>
             <input v-model="busqueda" type="text"
-              :placeholder="vista === 'usuarios' ? 'Buscar usuario, rol o ID...' : 'Buscar nombre, cédula...'"
+              :placeholder="vista === 'usuarios' ? 'Buscar por usuario, rol o ID...' : 'Buscar por nombre, cédula o teléfono...'"
               class="search-input" />
           </div>
-
-          <!-- Acciones inline móvil -->
-          <div class="mobile-actions">
-            <button v-if="vista === 'usuarios'" class="fab-inline" @click="showModal = true; resetNewUser()">
-              <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <button v-if="vista === 'clientes'" class="fab-inline" @click="showCreateCustomerModal = true; resetNewCustomer()">
-              <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <button class="fab-inline fab-prices" @click="abrirPricePlanModal" title="Precios">
-              <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>
-            </button>
-          </div>
-
           <div class="rol-filters" v-if="vista === 'usuarios'">
             <button class="rol-chip" :class="{ active: filtroRol === 'todos' }" @click="filtroRol = 'todos'">Todos</button>
             <button v-for="rol in rolesUnicos" :key="rol" class="rol-chip" :class="{ active: filtroRol === rol }" @click="filtroRol = rol">{{ rol }}</button>
           </div>
         </div>
 
-        <!-- Loading -->
+        <!-- ✅ Loading -->
         <div v-if="loading" class="state-box">
           <div class="bolt-spin">⚡</div>
           <p>Cargando datos...</p>
         </div>
 
-        <!-- Error usuarios -->
+        <!-- ✅ Error solo bloquea usuarios, clientes siempre muestra tabla -->
         <div v-else-if="errorMsg && vista === 'usuarios'" class="state-box error-state">
           <span>⚠</span><p>{{ errorMsg }}</p>
           <button class="retry-btn" @click="obtenerUsuarios()">Reintentar</button>
         </div>
 
-        <!-- Contenido principal -->
-        <div v-else class="content-area">
+        <!-- ✅ Tabla siempre visible cuando no está cargando -->
+        <div v-else class="table-wrapper">
+          <div class="table-scroll">
 
-          <!-- ── USUARIOS: Cards móvil / Tabla desktop ── -->
-          <template v-if="vista === 'usuarios'">
-
-            <!-- Cards en móvil -->
-            <div class="cards-list mobile-only">
-              <div v-for="(user, i) in usuariosFiltrados" :key="user.id"
-                   class="user-card" :style="{ animationDelay: i * 40 + 'ms' }">
-                <div class="card-top">
-                  <div class="card-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
-                  <div class="card-info">
-                    <span class="card-name">{{ user.username }}</span>
-                    <span class="role-badge" :class="rolColor(user.rol)">{{ user.rol }}</span>
-                  </div>
-                  <div class="card-actions">
-                    <button v-if="user.rol === 'admin'" class="action-btn edit-btn" @click="abrirEditar(user)">
+            <!-- ── USUARIOS ── -->
+            <table v-if="vista === 'usuarios'">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Contraseña</th>
+                  <th>Rol</th>
+                  <th class="th-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(user, i) in usuariosFiltrados" :key="user.id"
+                    class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
+                  <td>
+                    <div class="user-cell">
+                      <div class="avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
+                      <span>{{ user.username }}</span>
+                    </div>
+                  </td>
+                  <td><span class="pass-dots">{{ maskPassword(user.password) }}</span></td>
+                  <td><span class="role-badge" :class="rolColor(user.rol)">{{ user.rol }}</span></td>
+                  <td class="td-center">
+                    <button v-if="user.rol === 'admin'" class="action-btn edit-btn" @click="abrirEditar(user)" title="Editar">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
                     </button>
-                    <button v-if="user.rol === 'admin' || user.rol === 'customer'" class="action-btn delete-btn" @click="eliminarUsuario(user.id)">
+                    <button v-if="user.rol === 'admin' || user.rol === 'customer'" class="action-btn delete-btn" @click="eliminarUsuario(user.id)" title="Eliminar">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
-                  </div>
-                </div>
-                <div class="card-pass">
-                  <span class="card-pass-lbl">Contraseña</span>
-                  <span class="pass-dots">{{ maskPassword(user.password) }}</span>
-                </div>
-              </div>
-              <div v-if="!usuariosFiltrados.length" class="empty-card">
-                ⚡ Sin resultados para "{{ busqueda }}"
-              </div>
-            </div>
+                    <span v-if="user.rol !== 'admin' && user.rol !== 'customer'" class="no-action">—</span>
+                  </td>
+                </tr>
+                <tr v-if="!usuariosFiltrados.length">
+                  <td colspan="4" class="empty-row">⚡ Sin resultados para "{{ busqueda }}"</td>
+                </tr>
+              </tbody>
+            </table>
 
-            <!-- Tabla en desktop -->
-            <div class="table-wrapper desktop-only">
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Usuario</th>
-                      <th>Contraseña</th>
-                      <th>Rol</th>
-                      <th class="th-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(user, i) in usuariosFiltrados" :key="user.id"
-                        class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
-                      <td>
-                        <div class="user-cell">
-                          <div class="avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
-                          <span>{{ user.username }}</span>
-                        </div>
-                      </td>
-                      <td><span class="pass-dots">{{ maskPassword(user.password) }}</span></td>
-                      <td><span class="role-badge" :class="rolColor(user.rol)">{{ user.rol }}</span></td>
-                      <td class="td-center">
-                        <button v-if="user.rol === 'admin'" class="action-btn edit-btn" @click="abrirEditar(user)" title="Editar">
-                          <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-                        </button>
-                        <button v-if="user.rol === 'admin' || user.rol === 'customer'" class="action-btn delete-btn" @click="eliminarUsuario(user.id)" title="Eliminar">
-                          <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                        <span v-if="user.rol !== 'admin' && user.rol !== 'customer'" class="no-action">—</span>
-                      </td>
-                    </tr>
-                    <tr v-if="!usuariosFiltrados.length">
-                      <td colspan="4" class="empty-row">⚡ Sin resultados para "{{ busqueda }}"</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="table-footer">
-                Mostrando <strong>{{ usuariosFiltrados.length }}</strong> de <strong>{{ users.length }}</strong> usuarios
-              </div>
-            </div>
-
-          </template>
-
-          <!-- ── CLIENTES: Cards móvil / Tabla desktop ── -->
-          <template v-else>
-
-            <!-- Cards en móvil -->
-            <div class="cards-list mobile-only">
-              <div v-for="(c, i) in clientesFiltrados" :key="c.idcustomer"
-                   class="user-card customer-card" :style="{ animationDelay: i * 40 + 'ms' }">
-                <div class="card-top">
-                  <div class="card-avatar card-avatar--orange">{{ c.name?.charAt(0).toUpperCase() }}</div>
-                  <div class="card-info">
-                    <span class="card-name">{{ c.name }} {{ c.lastname }}</span>
-                    <span class="card-sub">{{ c.cedula }} · +57 {{ c.phone }}</span>
-                  </div>
-                  <div class="card-actions">
-                    <button class="action-btn edit-btn" @click="abrirEditarCustomer(c)">
+            <!-- ── CLIENTES ── -->
+            <table v-else>
+              <thead>
+                <tr>
+                  <th>Cédula</th>
+                  <th>Nombre</th>
+                  <th>Apellido</th>
+                  <th>Teléfono</th>
+                  <th>Contraseña</th>
+                  <th class="th-center">Planes</th>
+                  <th class="th-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(c, i) in clientesFiltrados" :key="c.idcustomer"
+                    class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
+                  <td>{{ c.cedula }}</td>
+                  <td>
+                    <div class="user-cell">
+                      <div class="avatar">{{ c.name?.charAt(0).toUpperCase() }}</div>
+                      <span>{{ c.name }}</span>
+                    </div>
+                  </td>
+                  <td>{{ c.lastname }}</td>
+                  <td>+57 {{ c.phone }}</td>
+                  <td><span class="pass-dots">{{ maskPassword(c.password) }}</span></td>
+                  <td class="td-center">
+                    <button class="btn-plan" @click="verPlanes(c)">
+                      <svg viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      </svg>
+                      Ver Planes
+                    </button>
+                  </td>
+                  <td class="td-center">
+                    <button class="action-btn edit-btn" @click="abrirEditarCustomer(c)" title="Editar">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
                     </button>
-                    <button class="action-btn delete-btn" @click="eliminarCustomer(c.idcustomer)">
+                    <button class="action-btn delete-btn" @click="eliminarCustomer(c.idcustomer)" title="Eliminar">
                       <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
-                  </div>
-                </div>
-                <div class="card-bottom">
-                  <div class="card-pass">
-                    <span class="card-pass-lbl">Contraseña</span>
-                    <span class="pass-dots">{{ maskPassword(c.password) }}</span>
-                  </div>
-                  <button class="btn-plan" @click="verPlanes(c)">
-                    <svg viewBox="0 0 20 20" fill="none">
-                      <rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-                      <path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                    </svg>
-                    Ver Planes
-                  </button>
-                </div>
-              </div>
-              <div v-if="!clientesFiltrados.length && !busqueda" class="empty-card empty-card--full">
-                <span class="empty-icon">👥</span>
-                <p class="empty-titulo">Sin clientes registrados</p>
-                <p class="empty-sub">Usa el botón + para crear el primero.</p>
-              </div>
-              <div v-else-if="!clientesFiltrados.length" class="empty-card">
-                ⚡ Sin resultados para "{{ busqueda }}"
-              </div>
-            </div>
+                  </td>
+                </tr>
 
-            <!-- Tabla desktop -->
-            <div class="table-wrapper desktop-only">
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Cédula</th>
-                      <th>Nombre</th>
-                      <th>Apellido</th>
-                      <th>Teléfono</th>
-                      <th>Contraseña</th>
-                      <th class="th-center">Planes</th>
-                      <th class="th-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(c, i) in clientesFiltrados" :key="c.idcustomer"
-                        class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
-                      <td>{{ c.cedula }}</td>
-                      <td>
-                        <div class="user-cell">
-                          <div class="avatar">{{ c.name?.charAt(0).toUpperCase() }}</div>
-                          <span>{{ c.name }}</span>
-                        </div>
-                      </td>
-                      <td>{{ c.lastname }}</td>
-                      <td>+57 {{ c.phone }}</td>
-                      <td><span class="pass-dots">{{ maskPassword(c.password) }}</span></td>
-                      <td class="td-center">
-                        <button class="btn-plan" @click="verPlanes(c)">
-                          <svg viewBox="0 0 20 20" fill="none">
-                            <rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-                            <path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                          </svg>
-                          Ver Planes
-                        </button>
-                      </td>
-                      <td class="td-center">
-                        <button class="action-btn edit-btn" @click="abrirEditarCustomer(c)" title="Editar">
-                          <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-                        </button>
-                        <button class="action-btn delete-btn" @click="eliminarCustomer(c.idcustomer)" title="Eliminar">
-                          <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                      </td>
-                    </tr>
-                    <tr v-if="!clientesFiltrados.length && !busqueda">
-                      <td colspan="7" class="empty-row">
-                        <div class="empty-clientes">
-                          <span class="empty-icon">👥</span>
-                          <p class="empty-titulo">No hay clientes registrados</p>
-                          <p class="empty-sub">Crea el primer cliente usando el botón en el menú lateral.</p>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr v-else-if="!clientesFiltrados.length">
-                      <td colspan="7" class="empty-row">⚡ Sin resultados para "{{ busqueda }}"</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <!-- ✅ Mensaje cuando no hay clientes -->
+                <tr v-if="!clientesFiltrados.length && !busqueda">
+                  <td colspan="7" class="empty-row">
+                    <div class="empty-clientes">
+                      <span class="empty-icon">👥</span>
+                      <p class="empty-titulo">No hay clientes registrados</p>
+                      <p class="empty-sub">Crea el primer cliente usando el botón "Nuevo Cliente" en el menú lateral.</p>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-else-if="!clientesFiltrados.length && busqueda">
+                  <td colspan="7" class="empty-row">⚡ Sin resultados para "{{ busqueda }}"</td>
+                </tr>
 
-              <div v-if="errorMsg && vista === 'clientes'" class="clientes-error-banner">
-                <span>⚠</span> {{ errorMsg }}
-                <button class="retry-inline" @click="obtenerClientes()">Reintentar</button>
-              </div>
+              </tbody>
+            </table>
 
-              <div class="table-footer">
-                Mostrando <strong>{{ clientesFiltrados.length }}</strong> de <strong>{{ customers.length }}</strong> clientes
-              </div>
-            </div>
-
-            <!-- Error clientes móvil -->
-            <div v-if="errorMsg && vista === 'clientes'" class="clientes-error-banner mobile-only">
-              <span>⚠</span> {{ errorMsg }}
-              <button class="retry-inline" @click="obtenerClientes()">Reintentar</button>
-            </div>
-
-          </template>
-
-          <!-- Conteo móvil -->
-          <div class="mobile-count mobile-only">
-            <span v-if="vista === 'usuarios'">{{ usuariosFiltrados.length }} / {{ users.length }} usuarios</span>
-            <span v-else>{{ clientesFiltrados.length }} / {{ customers.length }} clientes</span>
           </div>
 
+          <!-- ✅ Error de clientes como banner dentro de la tabla, no bloquea -->
+          <div v-if="errorMsg && vista === 'clientes'" class="clientes-error-banner">
+            <span>⚠</span> {{ errorMsg }}
+            <button class="retry-inline" @click="obtenerClientes()">Reintentar</button>
+          </div>
+
+          <div class="table-footer">
+            <span v-if="vista === 'usuarios'">
+              Mostrando <strong>{{ usuariosFiltrados.length }}</strong> de <strong>{{ users.length }}</strong> usuarios
+            </span>
+            <span v-else>
+              Mostrando <strong>{{ clientesFiltrados.length }}</strong> de <strong>{{ customers.length }}</strong> clientes
+            </span>
+          </div>
         </div>
 
       </main>
@@ -982,7 +827,7 @@ onMounted(() => { obtenerUsuarios() })
                       <input v-model="editingPrice" type="number" min="0" step="100" class="pp-input"
                         @keyup.enter="guardarPrecio(plan)" @keyup.esc="cancelarEditarPrecio" />
                     </div>
-                    <p class="pp-edit-hint">↵ guardar · Esc cancelar</p>
+                    <p class="pp-edit-hint">↵ guardar &nbsp;·&nbsp; Esc cancelar</p>
                   </template>
                 </div>
                 <div class="pp-actions">
@@ -1020,32 +865,10 @@ onMounted(() => { obtenerUsuarios() })
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap');
 
-/* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Variables ── */
-:root {
-  --topbar-h: 52px;
-  --sidebar-w: 230px;
-  --gold: #f5c500;
-  --orange: #ff7a00;
-  --bg: #0a0a0a;
-  --surface: #111;
-  --border: rgba(245,197,0,.12);
-}
+.screen { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0a; font-family: 'Barlow', sans-serif; position: relative; }
 
-/* ── Screen ── */
-.screen {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background: #0a0a0a;
-  color: #ccc;
-  font-family: 'Barlow', sans-serif;
-  position: relative;
-}
-
-/* ── Background decorativo ── */
 .bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .hex { position: absolute; }
 .hex-1 { width: 420px; height: 420px; background: conic-gradient(from 30deg,rgba(245,197,0,.08) 0deg,rgba(255,122,0,.06) 80deg,transparent 80deg); clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); top: -100px; right: -80px; }
@@ -1055,132 +878,44 @@ onMounted(() => { obtenerUsuarios() })
 .slash-2 { width: 1px; height: 40vh; background: linear-gradient(to bottom,transparent,rgba(255,122,0,.08) 50%,transparent); top: 30%; left: 230px; transform: rotate(12deg); }
 .noise { position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E"); opacity: .02; }
 
-/* ── Topbar (solo móvil) ── */
-.topbar {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--topbar-h);
-  background: #0d0d0d;
-  border-bottom: 1px solid var(--border);
-  z-index: 200;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-}
+.layout { position: relative; z-index: 1; display: flex; width: 100%; height: 100vh; }
 
-.topbar-menu {
-  width: 36px; height: 36px;
-  background: none; border: 1px solid rgba(245,197,0,.2);
-  cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-  flex-shrink: 0;
-  transition: border-color .2s;
-}
-.topbar-menu:hover { border-color: var(--gold); }
-.topbar-menu span {
-  display: block; width: 16px; height: 1.5px; background: #aaa;
-  transition: all .25s;
-  transform-origin: center;
-}
-.topbar-menu.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); background: var(--gold); }
-.topbar-menu.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.topbar-menu.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); background: var(--gold); }
-
-.topbar-logo { flex: 1; }
-.topbar-logo svg { width: 90px; height: auto; filter: drop-shadow(0 0 10px rgba(245,197,0,.15)); }
-
-.topbar-actions { display: flex; align-items: center; gap: 8px; }
-.topbar-stat { display: flex; flex-direction: column; align-items: flex-end; }
-.topbar-stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 900; color: var(--gold); line-height: 1; }
-.topbar-stat-lbl { font-size: .55rem; color: #555; letter-spacing: .15em; text-transform: uppercase; }
-
-/* ── Sidebar overlay (móvil) ── */
-.sidebar-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
-  z-index: 299; backdrop-filter: blur(2px);
-}
-.overlay-fade-enter-active, .overlay-fade-leave-active { transition: opacity .25s; }
-.overlay-fade-enter-from, .overlay-fade-leave-to { opacity: 0; }
-
-/* ── Layout ── */
-.layout {
-  position: relative; z-index: 1;
-  display: flex; width: 100%; height: 100vh;
-  background: #0a0a0a;
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: var(--sidebar-w);
-  height: 100vh;
-  background: #0d0d0d;
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  flex-shrink: 0;
-  z-index: 300;
-}
-
-.sidebar-inner {
-  display: flex; flex-direction: column;
-  height: 100%;
-  padding: 32px 0 24px;
-}
-
+.sidebar { width: 230px; height: 100vh; background: #0d0d0d; border-right: 1px solid rgba(245,197,0,.1); display: flex; flex-direction: column; padding: 32px 0 24px; flex-shrink: 0; }
 .sidebar-logo { padding: 0 24px 28px; border-bottom: 1px solid rgba(245,197,0,.08); margin-bottom: 24px; }
 .sidebar-logo svg { width: 130px; height: auto; filter: drop-shadow(0 0 18px rgba(245,197,0,.18)); }
 .sidebar-sub { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .55rem; letter-spacing: .35em; text-transform: uppercase; color: #444; margin-top: 4px; }
-
 .sidebar-nav { display: flex; flex-direction: column; gap: 4px; padding: 0 12px; flex: 1; }
-.nav-divider { height: 1px; background: rgba(245,197,0,.06); margin: 8px 2px; }
-
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; color: #555; font-size: .82rem; font-weight: 500; letter-spacing: .04em; text-decoration: none; border-left: 2px solid transparent; transition: all .2s; cursor: pointer; user-select: none; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; color: #555; font-size: .82rem; font-weight: 500; letter-spacing: .04em; text-decoration: none; border-left: 2px solid transparent; transition: all .2s; cursor: pointer; }
 .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
 .nav-item:hover { color: #f0f0f0; background: rgba(245,197,0,.05); }
-.nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(245,197,0,.07); }
-
-.btn-add { display: flex; align-items: center; gap: 8px; background: transparent; border: 1px solid rgba(245,197,0,.3); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; padding: 10px 14px; cursor: pointer; transition: all .2s; margin-top: 8px; width: 100%; }
+.nav-item.active { color: #f5c500; border-left-color: #f5c500; background: rgba(245,197,0,.07); }
+.btn-add { display: flex; align-items: center; gap: 8px; background: transparent; border: 1px solid rgba(245,197,0,.3); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; padding: 10px 14px; cursor: pointer; transition: all .2s; margin-top: 8px; }
 .btn-add svg { width: 14px; height: 14px; flex-shrink: 0; }
-.btn-add:hover { background: rgba(245,197,0,.08); border-color: var(--gold); }
+.btn-add:hover { background: rgba(245,197,0,.08); border-color: #f5c500; }
 .btn-prices { border-color: rgba(245,197,0,.2); color: #c9a200; }
-.btn-prices:hover { background: rgba(245,197,0,.07); border-color: rgba(245,197,0,.5); color: var(--gold); }
-
+.btn-prices:hover { background: rgba(245,197,0,.07); border-color: rgba(245,197,0,.5); color: #f5c500; }
 .sidebar-footer { padding: 20px 16px 0; border-top: 1px solid rgba(245,197,0,.08); display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .user-chip { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-.user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg,var(--gold),var(--orange)); color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg,#f5c500,#ff7a00); color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .user-info { display: flex; flex-direction: column; min-width: 0; }
 .user-name { font-size: .78rem; color: #e0e0e0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-role { font-size: .6rem; color: #555; letter-spacing: .08em; }
 .logout-btn { background: none; border: 1px solid #1e1e1e; color: #444; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s; }
 .logout-btn svg { width: 15px; height: 15px; }
-.logout-btn:hover { border-color: rgba(245,197,0,.4); color: var(--gold); }
+.logout-btn:hover { border-color: rgba(245,197,0,.4); color: #f5c500; }
 
-/* ── Main ── */
-.main {
-  flex: 1; height: 100vh;
-  overflow-y: auto;
-  padding: 48px 60px;
-  display: flex; flex-direction: column; gap: 26px;
-  min-width: 0;
-  background: #0a0a0a;
-}
-
-/* ── Page header (desktop) ── */
+.main { flex: 1; height: 100vh; overflow-y: auto; padding: 48px 60px; display: flex; flex-direction: column; gap: 26px; min-width: 0; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; flex-shrink: 0; }
-.page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 6px; }
 .page-title h1 { font-family: 'Barlow Condensed',sans-serif; font-size: 3.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #fff; line-height: 1; }
+.id-hint { color: #f5c500; font-size: 2.4rem; }
 .header-meta { display: flex; gap: 12px; }
 .stat-pill { display: flex; flex-direction: column; align-items: center; background: #111; border: 1px solid rgba(245,197,0,.12); padding: 10px 22px; gap: 2px; }
 .stat-pill.accent { border-color: rgba(245,197,0,.3); background: rgba(245,197,0,.06); }
-.stat-val { font-family: 'Barlow Condensed',sans-serif; font-size: 1.7rem; font-weight: 900; color: var(--gold); line-height: 1; }
+.stat-val { font-family: 'Barlow Condensed',sans-serif; font-size: 1.7rem; font-weight: 900; color: #f5c500; line-height: 1; }
 .stat-lbl { font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: #555; }
-
-/* ── Mobile tabs ── */
-.mobile-tabs { display: none; }
-
-/* ── Filtros ── */
-.filters-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
-.search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 500px; }
+.filters-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex-shrink: 0; }
+.search-wrap { position: relative; flex: 1; min-width: 240px; max-width: 500px; }
 .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: #444; pointer-events: none; }
 .search-input { width: 100%; background: #111; border: 1px solid rgba(245,197,0,.12); color: #f0f0f0; font-family: 'Barlow',sans-serif; font-size: .85rem; padding: 11px 14px 11px 38px; outline: none; transition: border-color .2s, background .2s; }
 .search-input::placeholder { color: #333; }
@@ -1188,63 +923,19 @@ onMounted(() => { obtenerUsuarios() })
 .rol-filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .rol-chip { background: transparent; border: 1px solid rgba(245,197,0,.15); color: #555; font-family: 'Barlow Condensed',sans-serif; font-size: .75rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 8px 18px; cursor: pointer; transition: all .2s; }
 .rol-chip:hover { border-color: rgba(245,197,0,.4); color: #ccc; }
-.rol-chip.active { background: rgba(245,197,0,.1); border-color: var(--gold); color: var(--gold); }
-
-/* Botones de acción inline en móvil */
-.mobile-actions { display: none; gap: 8px; }
-.fab-inline { width: 38px; height: 38px; background: rgba(245,197,0,.08); border: 1px solid rgba(245,197,0,.3); color: var(--gold); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0; }
-.fab-inline svg { width: 16px; height: 16px; }
-.fab-inline:hover { background: rgba(245,197,0,.15); border-color: var(--gold); }
-.fab-prices { background: rgba(245,197,0,.04); border-color: rgba(245,197,0,.18); color: #c9a200; }
-.fab-prices:hover { background: rgba(245,197,0,.1); border-color: rgba(245,197,0,.4); color: var(--gold); }
-
-/* ── Estado loading/error ── */
+.rol-chip.active { background: rgba(245,197,0,.1); border-color: #f5c500; color: #f5c500; }
 .state-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 20px; color: #555; font-size: .9rem; flex: 1; }
-.bolt-spin { font-size: 2.4rem; animation: boltPulse 1.4s ease-in-out infinite; filter: drop-shadow(0 0 10px var(--gold)); }
+.bolt-spin { font-size: 2.4rem; animation: boltPulse 1.4s ease-in-out infinite; filter: drop-shadow(0 0 10px #f5c500); }
 @keyframes boltPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 .error-state { color: #e05a45; }
 .retry-btn { background: none; border: 1px solid rgba(220,50,30,.4); color: #e05a45; font-family: 'Barlow Condensed',sans-serif; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; padding: 8px 20px; cursor: pointer; transition: all .2s; }
 .retry-btn:hover { background: rgba(220,50,30,.1); }
-
-/* ── Content area ── */
-.content-area { display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; }
-
-/* ── Cards (móvil) ── */
-.cards-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 80px; }
-.user-card {
-  background: #111; border: 1px solid rgba(245,197,0,.1);
-  padding: 14px 16px;
-  animation: rowIn .35s ease both;
-  transition: border-color .2s;
-}
-.user-card:hover { border-color: rgba(245,197,0,.2); }
-.customer-card { border-color: rgba(255,122,0,.1); }
-.customer-card:hover { border-color: rgba(255,122,0,.25); }
-
-.card-top { display: flex; align-items: center; gap: 10px; }
-.card-avatar { width: 38px; height: 38px; flex-shrink: 0; background: linear-gradient(135deg,rgba(245,197,0,.2),rgba(255,122,0,.15)); border: 1px solid rgba(245,197,0,.2); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
-.card-avatar--orange { background: linear-gradient(135deg,rgba(255,122,0,.2),rgba(245,197,0,.1)); border-color: rgba(255,122,0,.25); color: var(--orange); }
-.card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.card-name { font-size: .9rem; color: #e0e0e0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-sub { font-size: .72rem; color: #555; letter-spacing: .03em; }
-.card-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.card-pass { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.04); }
-.card-pass-lbl { font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; color: #444; }
-
-.card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.04); gap: 10px; }
-
-.empty-card { text-align: center; color: #444; padding: 40px 20px; font-size: .85rem; letter-spacing: .05em; background: #111; border: 1px dashed #1a1a1a; }
-.empty-card--full { padding: 56px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-
-.mobile-count { text-align: center; font-size: .68rem; color: #333; letter-spacing: .1em; text-transform: uppercase; padding: 8px; }
-
-/* ── Tabla (desktop) ── */
 .table-wrapper { display: flex; flex-direction: column; border: 1px solid rgba(245,197,0,.12); background: #111; animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both; flex: 1; min-height: 0; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .table-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 table { width: 100%; border-collapse: collapse; font-size: .88rem; }
 thead { background: rgba(245,197,0,.06); border-bottom: 1px solid rgba(245,197,0,.15); position: sticky; top: 0; z-index: 2; }
-th { font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: var(--gold); padding: 16px 20px; text-align: left; white-space: nowrap; }
+th { font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: #f5c500; padding: 16px 20px; text-align: left; white-space: nowrap; }
 .th-center { text-align: center; }
 td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; vertical-align: middle; }
 .table-row { transition: background .15s; animation: rowIn .35s ease both; }
@@ -1252,78 +943,71 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .table-row:last-child td { border-bottom: none; }
 @keyframes rowIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
 .user-cell { display: flex; align-items: center; gap: 10px; }
-.avatar { width: 32px; height: 32px; background: linear-gradient(135deg,rgba(245,197,0,.2),rgba(255,122,0,.15)); border: 1px solid rgba(245,197,0,.2); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.avatar { width: 32px; height: 32px; background: linear-gradient(135deg,rgba(245,197,0,.2),rgba(255,122,0,.15)); border: 1px solid rgba(245,197,0,.2); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pass-dots { color: #2a2a2a; letter-spacing: .15em; font-size: .85rem; }
 .role-badge { display: inline-block; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 4px 12px; border: 1px solid; }
-.badge-admin    { color: var(--gold); border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
-.badge-customer { color: var(--orange); border-color: rgba(255,122,0,.4); background: rgba(255,122,0,.07); }
+.badge-admin    { color: #f5c500; border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
+.badge-customer { color: #ff7a00; border-color: rgba(255,122,0,.4); background: rgba(255,122,0,.07); }
 .badge-default  { color: #888; border-color: rgba(136,136,136,.3); background: rgba(136,136,136,.06); }
 .td-center { text-align: center; }
 .no-action { color: #333; font-size: .8rem; }
 .action-btn { background: none; border: 1px solid transparent; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
 .action-btn svg { width: 13px; height: 13px; }
 .edit-btn { color: #555; }
-.edit-btn:hover { color: var(--gold); border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
+.edit-btn:hover { color: #f5c500; border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
 .delete-btn { color: #555; }
 .delete-btn:hover { color: #e05a45; border-color: rgba(220,50,30,.4); background: rgba(220,50,30,.07); }
-.btn-plan { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid rgba(245,197,0,.3); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; transition: all .2s; white-space: nowrap; }
+.btn-plan { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid rgba(245,197,0,.3); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; transition: all .2s; white-space: nowrap; }
 .btn-plan svg { width: 12px; height: 12px; flex-shrink: 0; }
-.btn-plan:hover { background: rgba(245,197,0,.1); border-color: var(--gold); }
+.btn-plan:hover { background: rgba(245,197,0,.1); border-color: #f5c500; }
+
+/* ✅ Empty state clientes */
 .empty-row { text-align: center; color: #444; padding: 56px 20px !important; font-size: .88rem; letter-spacing: .05em; }
 .empty-clientes { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .empty-icon { font-size: 2.2rem; opacity: .3; filter: grayscale(1); }
 .empty-titulo { font-family: 'Barlow Condensed',sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #333; }
 .empty-sub { font-size: .75rem; color: #2a2a2a; max-width: 320px; line-height: 1.5; }
+
+/* ✅ Banner error clientes (no bloquea la vista) */
 .clientes-error-banner { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: rgba(220,50,30,.06); border-top: 1px solid rgba(220,50,30,.2); color: #e05a45; font-size: .78rem; flex-shrink: 0; }
 .retry-inline { background: none; border: 1px solid rgba(220,50,30,.35); color: #e05a45; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; padding: 4px 12px; cursor: pointer; transition: all .2s; margin-left: auto; }
 .retry-inline:hover { background: rgba(220,50,30,.1); }
+
 .table-footer { padding: 13px 20px; border-top: 1px solid rgba(245,197,0,.08); font-size: .7rem; color: #444; letter-spacing: .06em; flex-shrink: 0; }
 .table-footer strong { color: #888; }
 
-/* ── Modales ── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
-.modal-box { background: #111; border: 1px solid rgba(245,197,0,.2); box-shadow: 0 40px 100px rgba(0,0,0,.9); width: 100%; max-width: 380px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; animation: modalIn .3s cubic-bezier(.16,1,.3,1) both; }
+/* ══ MODALES BASE ══ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modal-box { background: #111; border: 1px solid rgba(245,197,0,.2); box-shadow: 0 40px 100px rgba(0,0,0,.9); width: 100%; max-width: 380px; display: flex; flex-direction: column; animation: modalIn .3s cubic-bezier(.16,1,.3,1) both; }
 .modal-wide { max-width: 560px; }
 @keyframes modalIn { from { opacity: 0; transform: scale(.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 26px 18px; border-bottom: 1px solid rgba(245,197,0,.1); position: sticky; top: 0; background: #111; z-index: 1; }
-.modal-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 26px 18px; border-bottom: 1px solid rgba(245,197,0,.1); }
+.modal-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 5px; }
 .modal-header h2 { font-family: 'Barlow Condensed',sans-serif; font-size: 1.5rem; font-weight: 900; text-transform: uppercase; color: #fff; line-height: 1; }
-.modal-close { background: none; border: none; color: #444; font-size: 1rem; cursor: pointer; padding: 2px; transition: color .2s; line-height: 1; flex-shrink: 0; }
-.modal-close:hover { color: var(--gold); }
+.modal-close { background: none; border: none; color: #444; font-size: 1rem; cursor: pointer; padding: 2px; transition: color .2s; line-height: 1; }
+.modal-close:hover { color: #f5c500; }
 .modal-body { padding: 22px 26px; }
 .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-group:last-child { margin-bottom: 0; }
 .modal-grid .form-group { margin-bottom: 0; }
 .form-group label { font-family: 'Barlow Condensed',sans-serif; font-size: .62rem; letter-spacing: .22em; text-transform: uppercase; color: #666; font-weight: 700; }
-.req { color: var(--gold); }
+.req { color: #f5c500; }
 .hint-lbl { color: #444; font-size: .58rem; letter-spacing: .1em; text-transform: none; font-weight: 400; }
 .form-group input { background: #0d0d0d; border: 1px solid rgba(245,197,0,.15); color: #f0f0f0; font-family: 'Barlow',sans-serif; font-size: .85rem; padding: 10px 12px; outline: none; transition: border-color .2s, background .2s; }
 .form-group input::placeholder { color: #333; }
 .form-group input:focus { border-color: rgba(245,197,0,.5); background: #0f0e09; }
 .modal-error { color: #e05a45; font-size: .78rem; padding: 9px 13px; background: rgba(220,50,30,.06); border: 1px solid rgba(220,50,30,.25); }
-.modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid rgba(245,197,0,.1); position: sticky; bottom: 0; background: #111; }
+.modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid rgba(245,197,0,.1); }
 .btn-cancel { background: transparent; border: 1px solid #222; color: #555; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 9px 20px; cursor: pointer; transition: all .2s; }
 .btn-cancel:hover { border-color: rgba(245,197,0,.3); color: #aaa; }
-.btn-save {
-  background: #FFD700; /* amarillo */
-  border: none;
-  color: #ffffff; /* texto blanco */
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: .78rem;
-  font-weight: 900;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  padding: 10px 24px;
-  cursor: pointer;
-  transition: all .2s;
-}
+.btn-save { background: #f5c500; border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 24px; cursor: pointer; transition: all .2s; }
 .btn-save:hover:not(:disabled) { background: #ffd700; box-shadow: 0 0 18px rgba(245,197,0,.3); }
 .btn-save:disabled { opacity: .5; cursor: not-allowed; }
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .22s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 
-/* ── Price Plan Modal ── */
+/* ══ PRICE PLAN MODAL ══ */
 .pp-modal  { max-width: 620px; }
 .pp-header { background: linear-gradient(160deg, #0e0e0e 0%, #110f06 100%); }
 .pp-body   { padding: 20px 20px 10px; }
@@ -1362,132 +1046,11 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .pp-empty { grid-column: span 2; text-align: center; color: #333; padding: 40px 20px; font-size: .88rem; letter-spacing: .05em; }
 .pp-save-err { margin-top: 14px; }
 
-/* Helpers */
-.mobile-only  { display: none !important; }
-.desktop-only { display: flex !important; }
-
-/* ══════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════ */
-
-/* ── Tablet intermedio ── */
-@media (max-width: 1024px) {
-  .main { padding: 36px 32px; }
-  .page-title h1 { font-size: 2.4rem; }
-}
-
-/* ── Móvil / tablet ── */
-@media (max-width: 768px) {
-
-  /* Fondo oscuro en TODO */
-  html, body, .screen, .layout, .main,
-  .content-area, .cards-list { background: #0a0a0a !important; }
-
-  /* Mostrar topbar */
-  .topbar { display: flex; }
-
-  /* Sidebar: oculto por defecto, desliza */
-  .sidebar {
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: 260px;
-    transform: translateX(-100%);
-    transition: transform .28s cubic-bezier(.16,1,.3,1);
-  }
-  .sidebar--open {
-    transform: translateX(0);
-    box-shadow: 8px 0 40px rgba(0,0,0,.8);
-  }
-
-  /* Layout: block, main cubre toda la pantalla */
-  .layout { display: block; position: relative; }
-  .main {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: calc(var(--topbar-h) + 14px) 14px 20px;
-    gap: 12px;
-  }
-
-  /* Ocultar page-header de escritorio */
-  .page-header { display: none; }
-
-  /* Tabs de navegación */
-  .mobile-tabs {
-    display: flex; gap: 0;
-    border: 1px solid rgba(245,197,0,.18);
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .mobile-tab {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-    padding: 12px 8px;
-    background: #0d0d0d; border: none;
-    color: #555; font-family: 'Barlow Condensed',sans-serif;
-    font-size: .82rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-    cursor: pointer; transition: all .2s;
-    border-right: 1px solid rgba(245,197,0,.1);
-  }
-  .mobile-tab:last-child { border-right: none; }
-  .mobile-tab svg { width: 14px; height: 14px; }
-  .mobile-tab:hover { color: #ccc; background: rgba(245,197,0,.04); }
-  .mobile-tab.active {
-    color: var(--gold);
-    background: rgba(245,197,0,.08);
-    border-bottom: 2px solid var(--gold);
-  }
-
-  /* Barra filtros */
-  .filters-bar { gap: 8px; flex-wrap: wrap; }
-  .search-wrap { max-width: 100%; flex: 1 1 0; min-width: 0; }
-  .search-input { background: #0d0d0d; }
-
-  /* Botones de acción inline */
-  .mobile-actions { display: flex; }
-
-  /* Cards visibles, tabla oculta */
-  .mobile-only  { display: flex !important; }
-  .desktop-only { display: none !important; }
-
-  /* Cards */
-  .user-card, .empty-card { background: #0f0f0f; }
-  .cards-list { flex: 1; }
-
-  /* Rol chips horizontal */
-  .rol-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; width: 100%; }
-  .rol-chip { white-space: nowrap; padding: 8px 14px; font-size: .72rem; }
-
-  /* Modales desde abajo */
-  .modal-overlay { padding: 0; align-items: flex-end; }
-  .modal-box {
-    max-width: 100%; width: 100%;
-    border: 1px solid rgba(245,197,0,.2);
-    border-bottom: none;
-    border-radius: 0;
-    max-height: 92vh;
-    background: #111;
-    animation: modalInUp .3s cubic-bezier(.16,1,.3,1) both;
-  }
-  @keyframes modalInUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 48px; }
   .modal-grid { grid-template-columns: 1fr; }
-  .pp-modal { max-width: 100%; }
   .pp-grid { grid-template-columns: 1fr; }
-  .pp-price { font-size: 1.5rem; }
-}
-
-/* ── Móvil pequeño ── */
-@media (max-width: 400px) {
-  .main { padding: calc(var(--topbar-h) + 10px) 10px 16px; gap: 10px; }
-  .topbar { padding: 0 10px; }
-  .search-input { font-size: .8rem; padding: 10px 12px 10px 34px; }
-  .card-name { font-size: .82rem; }
-  .mobile-tab { font-size: .72rem; padding: 10px 4px; gap: 5px; }
-  .mobile-tab svg { width: 12px; height: 12px; }
+  .pp-modal { max-width: 100%; }
 }
 </style>

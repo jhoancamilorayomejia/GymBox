@@ -12,6 +12,32 @@ const errorMsg    = ref('')
 const viewDate    = ref(new Date())
 const verVencidos = ref(false)
 
+// ── Filtros de búsqueda ───────────────────────────────────
+const filtroActivos  = ref('')
+const filtroVencidos = ref('')
+
+const planesFiltradosActivos = computed(() => {
+  if (!filtroActivos.value) return planesActivos.value
+  const q = filtroActivos.value.replace(/-/g, '').replace(/\//g, '')
+  return planesActivos.value.filter(p => {
+    const pay   = (p.datepay   || '').split('T')[0].replace(/-/g, '')
+    const start = (p.datestart || '').split('T')[0].replace(/-/g, '')
+    const end   = (p.datefinish|| '').split('T')[0].replace(/-/g, '')
+    return pay.includes(q) || start.includes(q) || end.includes(q)
+  })
+})
+
+const planesFiltradosVencidos = computed(() => {
+  if (!filtroVencidos.value) return planesVencidos.value
+  const q = filtroVencidos.value.replace(/-/g, '').replace(/\//g, '')
+  return planesVencidos.value.filter(p => {
+    const pay   = (p.datepay   || '').split('T')[0].replace(/-/g, '')
+    const start = (p.datestart || '').split('T')[0].replace(/-/g, '')
+    const end   = (p.datefinish|| '').split('T')[0].replace(/-/g, '')
+    return pay.includes(q) || start.includes(q) || end.includes(q)
+  })
+})
+
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
@@ -439,7 +465,7 @@ onMounted(() => { obtenerPlanes() })
         <header class="page-header">
           <div class="page-title">
             <span class="page-eyebrow">⚡ Bienvenido de vuelta</span>
-            <h1>{{ username }} </h1>
+            <h1>{{ username }}</h1>
           </div>
           <div class="header-meta">
             <div class="stat-pill"><span class="stat-val">{{ planes.length }}</span><span class="stat-lbl">Total</span></div>
@@ -448,7 +474,7 @@ onMounted(() => { obtenerPlanes() })
           </div>
         </header>
 
-        <!-- ── ACCIONES MÓVIL (solo visible en móvil) ── -->
+        <!-- ── ACCIONES MÓVIL ── -->
         <div class="mobile-actions">
           <button class="mob-btn-pass" @click="abrirModalPassword">
             <span class="mob-btn-icon">🔑</span>
@@ -521,9 +547,26 @@ onMounted(() => { obtenerPlanes() })
             </div>
           </div>
 
+          <!-- ── Tabla planes vigentes ── -->
           <div class="section-label">
             <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Planes vigentes
+          </div>
+
+          <div class="filtro-bar">
+            <div class="filtro-input-wrap">
+              <svg class="filtro-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <input
+                class="filtro-input"
+                v-model="filtroActivos"
+                placeholder="Buscar por fecha de pago, inicio o fin (ej: 2026-04)"
+                type="text"
+              />
+              <button v-if="filtroActivos" class="filtro-clear" @click="filtroActivos = ''">✕</button>
+            </div>
+            <span class="filtro-count" v-if="filtroActivos">
+              {{ planesFiltradosActivos.length }} resultado{{ planesFiltradosActivos.length !== 1 ? 's' : '' }}
+            </span>
           </div>
 
           <div class="table-wrapper">
@@ -531,7 +574,7 @@ onMounted(() => { obtenerPlanes() })
               <table>
                 <thead><tr><th>#</th><th>Tipo</th><th>Precio</th><th>Fecha Pago</th><th>Inicio</th><th>Fin</th><th>Disponibilidad</th><th>Estado</th></tr></thead>
                 <tbody>
-                  <tr v-for="(p,i) in planesActivos" :key="p.idplan" class="table-row" :style="{ animationDelay:i*45+'ms' }">
+                  <tr v-for="(p,i) in planesFiltradosActivos" :key="p.idplan" class="table-row" :style="{ animationDelay:i*45+'ms' }">
                     <td><span class="id-badge">{{ p.idplan }}</span></td>
                     <td><span class="tipo-label">{{ p.typeplan }}</span></td>
                     <td><span class="precio-val">${{ Number(p.price).toLocaleString('es-CO') }}</span></td>
@@ -541,13 +584,21 @@ onMounted(() => { obtenerPlanes() })
                     <td><span class="disp-badge" :class="dispFila(p).clase">{{ dispFila(p).label }}</span></td>
                     <td><span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span></td>
                   </tr>
-                  <tr v-if="!planesActivos.length"><td colspan="8" class="empty-row">⚡ No tienes planes vigentes. Habla con tu entrenador.</td></tr>
+                  <tr v-if="!planesFiltradosActivos.length">
+                    <td colspan="8" class="empty-row">
+                      {{ filtroActivos ? '🔍 Sin resultados para esa fecha.' : '⚡ No tienes planes vigentes. Habla con tu entrenador.' }}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-            <div class="table-footer">{{ planesActivos.length }} plan{{ planesActivos.length!==1?'es':'' }} vigente{{ planesActivos.length!==1?'s':'' }}</div>
+            <div class="table-footer">
+              {{ planesFiltradosActivos.length }} plan{{ planesFiltradosActivos.length!==1?'es':'' }} vigente{{ planesFiltradosActivos.length!==1?'s':'' }}
+              <span v-if="filtroActivos" class="filtro-footer-hint"> · filtrado de {{ planesActivos.length }} total</span>
+            </div>
           </div>
 
+          <!-- ── Planes vencidos ── -->
           <div class="vencidos-header">
             <div class="section-label">
               <svg viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 100 14A7 7 0 0010 3zM10 7v4l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -592,12 +643,29 @@ onMounted(() => { obtenerPlanes() })
                   </div>
                 </div>
               </div>
+
+              <!-- Tabla vencidos con filtro -->
               <div class="table-wrapper table-vencidos">
+                <div class="filtro-bar filtro-bar-venc">
+                  <div class="filtro-input-wrap">
+                    <svg class="filtro-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input
+                      class="filtro-input filtro-input-venc"
+                      v-model="filtroVencidos"
+                      placeholder="Buscar por fecha de pago, inicio o fin..."
+                      type="text"
+                    />
+                    <button v-if="filtroVencidos" class="filtro-clear" @click="filtroVencidos = ''">✕</button>
+                  </div>
+                  <span class="filtro-count" v-if="filtroVencidos">
+                    {{ planesFiltradosVencidos.length }} resultado{{ planesFiltradosVencidos.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
                 <div class="table-scroll">
                   <table>
                     <thead><tr><th>#</th><th>Tipo</th><th>Precio</th><th>Fecha Pago</th><th>Inicio</th><th>Fin</th><th>Estado pago</th></tr></thead>
                     <tbody>
-                      <tr v-for="(p,i) in planesVencidos" :key="p.idplan" class="table-row row-vencido" :style="{ animationDelay:i*40+'ms' }">
+                      <tr v-for="(p,i) in planesFiltradosVencidos" :key="p.idplan" class="table-row row-vencido" :style="{ animationDelay:i*40+'ms' }">
                         <td><span class="id-badge id-badge-venc">{{ p.idplan }}</span></td>
                         <td><span class="tipo-label tipo-venc">{{ p.typeplan }}</span></td>
                         <td><span class="precio-val precio-venc">${{ Number(p.price).toLocaleString('es-CO') }}</span></td>
@@ -606,10 +674,18 @@ onMounted(() => { obtenerPlanes() })
                         <td>{{ fmtFecha(p.datefinish) }}</td>
                         <td><span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span></td>
                       </tr>
+                      <tr v-if="!planesFiltradosVencidos.length">
+                        <td colspan="7" class="empty-row">
+                          {{ filtroVencidos ? '🔍 Sin resultados para esa fecha.' : 'Sin planes vencidos.' }}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-                <div class="table-footer">{{ planesVencidos.length }} plan{{ planesVencidos.length!==1?'es':'' }} vencido{{ planesVencidos.length!==1?'s':'' }} en el historial</div>
+                <div class="table-footer">
+                  {{ planesFiltradosVencidos.length }} plan{{ planesFiltradosVencidos.length!==1?'es':'' }} vencido{{ planesFiltradosVencidos.length!==1?'s':'' }} en el historial
+                  <span v-if="filtroVencidos" class="filtro-footer-hint"> · filtrado de {{ planesVencidos.length }} total</span>
+                </div>
               </div>
             </div>
           </transition>
@@ -742,21 +818,21 @@ onMounted(() => { obtenerPlanes() })
               <label class="pass-label">CONFIRMAR CONTRASEÑA</label>
               <input type="password" placeholder="Repite la contraseña" v-model="passwordData.confirmPassword" class="mpay-date-input"/>
             </div>
-            <!-- Indicador de requisitos -->
-<div v-if="passwordData.password" class="pass-requisitos">
-  <div class="req-item" :class="passwordData.password.length >= 8 ? 'req-ok' : 'req-fail'">
-  {{ passwordData.password.length >= 8 ? '✓' : '✕' }} Mínimo 8 caracteres
-</div>
-  <div class="req-item" :class="/[a-zA-Z]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
-    {{ /[a-zA-Z]/.test(passwordData.password) ? '✓' : '✕' }} Al menos una letra
-  </div>
-  <div class="req-item" :class="/[0-9]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
-    {{ /[0-9]/.test(passwordData.password) ? '✓' : '✕' }} Al menos un número
-  </div>
-</div>
-<div v-if="passwordData.confirmPassword" class="pass-match" :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
-  {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
-</div>
+            <div v-if="passwordData.password" class="pass-requisitos">
+              <div class="req-item" :class="passwordData.password.length >= 8 ? 'req-ok' : 'req-fail'">
+                {{ passwordData.password.length >= 8 ? '✓' : '✕' }} Mínimo 8 caracteres
+              </div>
+              <div class="req-item" :class="/[a-zA-Z]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
+                {{ /[a-zA-Z]/.test(passwordData.password) ? '✓' : '✕' }} Al menos una letra
+              </div>
+              <div class="req-item" :class="/[0-9]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
+                {{ /[0-9]/.test(passwordData.password) ? '✓' : '✕' }} Al menos un número
+              </div>
+            </div>
+            <div v-if="passwordData.confirmPassword" class="pass-match"
+              :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
+              {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
+            </div>
             <button class="mpay-btn-pagar" @click="cambiarPassword" :disabled="guardandoPassword" style="margin-top:4px">
               <span class="mpay-pagar-bolt">🔑</span>
               <span class="mpay-pagar-text">
@@ -1182,4 +1258,80 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 }
 .req-ok   { color: #4ade80; }
 .req-fail { color: #555; }
+
+/* ── Filtros de búsqueda ── */
+.filtro-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.filtro-bar-venc {
+  padding: 14px 16px 0;
+}
+.filtro-input-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  background: #111;
+  border: 1px solid rgba(245,197,0,.18);
+  transition: border-color .2s;
+  position: relative;
+}
+.filtro-input-wrap:focus-within {
+  border-color: rgba(245,197,0,.5);
+}
+.filtro-icon {
+  width: 14px;
+  height: 14px;
+  stroke: #555;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.filtro-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e0e0e0;
+  font-family: 'Barlow', sans-serif;
+  font-size: .8rem;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.filtro-input::placeholder {
+  color: #3a3a3a;
+}
+.filtro-input-venc {
+  color: #aaa;
+}
+.filtro-clear {
+  background: none;
+  border: none;
+  color: #444;
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: .75rem;
+  height: 100%;
+  transition: color .2s;
+  flex-shrink: 0;
+}
+.filtro-clear:hover {
+  color: #f5c500;
+}
+.filtro-count {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .65rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: #f5c500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filtro-footer-hint {
+  color: #3a3a3a;
+  font-style: italic;
+}
 </style>

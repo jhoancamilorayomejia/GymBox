@@ -53,7 +53,7 @@ const obtenerPlanes = async () => {
 }
 
 const hoyMidnight = () => { const h = new Date(); h.setHours(0,0,0,0); return h }
-
+/*
 const planesActivos = computed(() => {
   const hoy = hoyMidnight()
   return planes.value.filter(p => p.state?.toLowerCase() === 'pagado' && normalizar(p.datefinish) >= hoy)
@@ -63,7 +63,7 @@ const planesVencidos = computed(() => {
   const hoy = hoyMidnight()
   return planes.value.filter(p => p.state?.toLowerCase() === 'pagado' && normalizar(p.datefinish) < hoy)
     .sort((a,b) => normalizar(b.datefinish) - normalizar(a.datefinish))
-})
+})*/
 
 // ── Modal de pago ─────────────────────────────────────────
 const mostrarModal     = ref(false)
@@ -168,7 +168,7 @@ const cumpleRango = (fecha, inicio, fin) => {
 
   return true
 }
-
+//agregado reciente
 const planesActivos = computed(() => {
   const hoy = hoyMidnight()
 

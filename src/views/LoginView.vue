@@ -450,35 +450,42 @@ const registerCustomer = async () => {
       <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
         <div class="modal-card">
           <button class="modal-close" @click="showModal = false">✕</button>
+
           <div class="modal-brand">
-            <svg viewBox="0 0 160 70" xmlns="http://www.w3.org/2000/svg" style="width:130px">
-              <polygon points="46,3 30,36 42,36 26,67 64,28 48,28 70,3" fill="#f5c500"/>
-              <text x="70" y="33" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#f5c500">RAYO</text>
-              <text x="70" y="60" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="30" fill="#fff">BOX</text>
+            <svg viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" style="width:140px">
+              <polygon points="52,4 36,40 48,40 32,76 72,32 56,32 78,4" fill="#f5c500"/>
+              <text x="78" y="38" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#f5c500" letter-spacing="-1">RAYO</text>
+              <text x="78" y="68" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#fff" letter-spacing="-1">BOX</text>
+              <text x="78" y="78" font-family="'Barlow Condensed',sans-serif" font-weight="400" font-size="9" fill="#555" letter-spacing="3">CROSS LIFTING</text>
             </svg>
           </div>
+
           <div class="modal-header">
-            <div class="bolt-icon">⚡</div>
-            <h1>Acceso al Sistema</h1>
+            <div class="modal-header-top">
+              <div class="bolt-badge">⚡</div>
+              <h1>Acceso al Sistema</h1>
+            </div>
             <p>Ingresá tus credenciales para continuar</p>
           </div>
+          <div class="modal-divider"></div>
+
           <form class="login-form" @submit.prevent="loginAdmin">
             <div class="field" :class="{ filled: loginEmail }">
               <label>Usuario</label>
               <div class="input-wrap">
                 <svg class="input-icon" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/>
-                  <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
-                <input v-model="loginEmail" type="text" placeholder="Tu usuario" autocomplete="username" required/>
+                <input v-model="loginEmail" type="text" placeholder="Tu nombre de usuario" autocomplete="username" required/>
               </div>
             </div>
             <div class="field" :class="{ filled: loginPassword }">
               <label>Contraseña</label>
               <div class="input-wrap">
                 <svg class="input-icon" viewBox="0 0 20 20" fill="none">
-                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <input v-model="loginPassword" :type="showPassword ? 'text' : 'password'" placeholder="••••••••" autocomplete="current-password" required/>
                 <button type="button" class="eye-btn" @click="showPassword = !showPassword">
@@ -496,15 +503,20 @@ const registerCustomer = async () => {
               <div v-if="loginError" class="error-box"><span>⚡</span> {{ loginError }}</div>
             </transition>
             <button class="btn-login" type="submit" :disabled="loginLoading">
-              <span class="btn-bg"></span>
               <span class="btn-label">
-                <svg v-if="loginLoading" class="spinner" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+                <svg v-if="loginLoading" class="spinner" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,.25)" stroke-width="3" fill="none"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round" fill="none"/>
                 </svg>
-                {{ loginLoading ? 'Ingresando...' : 'INGRESAR' }}
+                {{ loginLoading ? 'Ingresando...' : 'Ingresar al sistema' }}
               </span>
             </button>
           </form>
+
+          <p class="modal-switch-link">
+            ¿No tenés cuenta?
+            <button @click="showModal = false; showRegisterModal = true">Registrate gratis</button>
+          </p>
           <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
         </div>
       </div>
@@ -515,44 +527,79 @@ const registerCustomer = async () => {
       <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
         <div class="modal-card">
           <button class="modal-close" @click="showRegisterModal = false">✕</button>
+
+          <div class="modal-brand">
+            <svg viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" style="width:140px">
+              <polygon points="52,4 36,40 48,40 32,76 72,32 56,32 78,4" fill="#f5c500"/>
+              <text x="78" y="38" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#f5c500" letter-spacing="-1">RAYO</text>
+              <text x="78" y="68" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#fff" letter-spacing="-1">BOX</text>
+              <text x="78" y="78" font-family="'Barlow Condensed',sans-serif" font-weight="400" font-size="9" fill="#555" letter-spacing="3">CROSS LIFTING</text>
+            </svg>
+          </div>
+
           <div class="modal-header">
-            <div class="bolt-icon">⚡</div>
-            <h1>Crear cuenta</h1>
+            <div class="modal-header-top">
+              <div class="bolt-badge">⚡</div>
+              <h1>Crear cuenta</h1>
+            </div>
             <p>Completá tus datos para unirte a Rayo Box</p>
           </div>
+          <div class="modal-divider"></div>
+
           <form class="login-form" @submit.prevent="registerCustomer">
             <div class="reg-grid">
               <div class="field" :class="{ filled: regName }">
                 <label>Nombre</label>
                 <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
                   <input v-model="regName" type="text" placeholder="Juan" required />
                 </div>
               </div>
               <div class="field" :class="{ filled: regLastName }">
                 <label>Apellido</label>
                 <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
                   <input v-model="regLastName" type="text" placeholder="Pérez" required />
                 </div>
               </div>
             </div>
+
             <div class="reg-grid">
               <div class="field" :class="{ filled: regCedula }">
                 <label>Cédula</label>
                 <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M6 9h8M6 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                  </svg>
                   <input v-model="regCedula" type="text" placeholder="1234567890" required />
                 </div>
               </div>
               <div class="field" :class="{ filled: regPhone }">
                 <label>Teléfono</label>
                 <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <path d="M4 4a1 1 0 011-1h2.5a1 1 0 011 .8l.5 2.5a1 1 0 01-.3.9l-1 1a8 8 0 004.1 4.1l1-1a1 1 0 01.9-.3l2.5.5a1 1 0 01.8 1V16a1 1 0 01-1 1C7.2 17 3 12.8 3 5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/>
+                  </svg>
                   <input v-model="regPhone" type="tel" placeholder="3001234567" required />
                 </div>
               </div>
             </div>
+
             <div class="field" :class="{ filled: regPassword }">
               <label>Contraseña</label>
               <div class="input-wrap">
-                <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="Mínimo 8 caracteres" required />
                 <button type="button" class="eye-btn" @click="showRegPassword = !showRegPassword">
                   <svg v-if="!showRegPassword" viewBox="0 0 20 20" fill="none">
                     <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
@@ -564,26 +611,36 @@ const registerCustomer = async () => {
                 </button>
               </div>
             </div>
+
             <div class="field" :class="{ filled: regPassword2 }">
               <label>Confirmar contraseña</label>
               <div class="input-wrap">
-                <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="••••••••" required />
+                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="Repetí tu contraseña" required />
               </div>
             </div>
+
             <transition name="shake">
               <div v-if="regError" class="error-box"><span>⚡</span> {{ regError }}</div>
             </transition>
+
             <button class="btn-login" type="submit" :disabled="regLoading">
-              <span class="btn-bg"></span>
-              <span class="btn-label">{{ regLoading ? 'Registrando...' : 'CREAR CUENTA' }}</span>
+              <span class="btn-label">
+                <svg v-if="regLoading" class="spinner" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,.25)" stroke-width="3" fill="none"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round" fill="none"/>
+                </svg>
+                {{ regLoading ? 'Creando cuenta...' : 'Crear mi cuenta' }}
+              </span>
             </button>
           </form>
-          <p style="text-align:center;font-size:.74rem;color:#555;margin-top:16px">
+
+          <p class="modal-switch-link">
             ¿Ya tenés cuenta?
-            <button style="background:none;border:none;color:#f5c500;cursor:pointer;font-size:.74rem;text-decoration:underline"
-              @click="showRegisterModal = false; showModal = true">
-              Iniciá sesión
-            </button>
+            <button @click="showRegisterModal = false; showModal = true">Iniciá sesión</button>
           </p>
           <p class="modal-footer-note">Rayo Box · Sistema de Gestión v1.0</p>
         </div>
@@ -790,44 +847,144 @@ const registerCustomer = async () => {
 .footer-copy{max-width:1200px;margin:0 auto;padding:20px 32px 0;font-size:.68rem;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
 
 /* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
 .modal-fade-enter-active,.modal-fade-leave-active{transition:opacity .3s}
 .modal-fade-enter-from,.modal-fade-leave-to{opacity:0}
-.modal-card{position:relative;width:100%;max-width:420px;background:#111;border:1px solid rgba(245,197,0,.15);box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 60px rgba(245,197,0,.05);padding:44px 40px 36px;animation:cardIn .4s cubic-bezier(.16,1,.3,1) both;margin:auto}
-@keyframes cardIn{from{opacity:0;transform:scale(.95) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:#444;font-size:1rem;cursor:pointer;transition:color .2s}
-.modal-close:hover{color:#f5c500}
-.modal-brand{text-align:center;margin-bottom:4px}
-.modal-header{text-align:center;margin-bottom:32px}
-.bolt-icon{font-size:1.8rem;margin-bottom:8px;filter:drop-shadow(0 0 12px #f5c500);display:block;animation:boltPulse 2.5s ease-in-out infinite}
-@keyframes boltPulse{0%,100%{filter:drop-shadow(0 0 8px #f5c500)}50%{filter:drop-shadow(0 0 22px #f5c500) drop-shadow(0 0 40px rgba(245,197,0,.4))}}
-.modal-header h1{font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#fff;margin-bottom:4px}
-.modal-header p{font-size:.74rem;color:#555;letter-spacing:.05em}
-.login-form{display:flex;flex-direction:column;gap:18px}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-family:'Barlow Condensed',sans-serif;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:#555;font-weight:700;transition:color .2s}
+
+/* Card principal — más ancha y con acento lateral dorado */
+.modal-card{
+  position:relative;width:100%;max-width:500px;
+  background:#0f0f0f;
+  border:1px solid rgba(245,197,0,.2);
+  border-left:4px solid #f5c500;
+  box-shadow:0 48px 120px rgba(0,0,0,.95),0 0 80px rgba(245,197,0,.08);
+  padding:52px 48px 44px;
+  animation:cardIn .4s cubic-bezier(.16,1,.3,1) both;
+  margin:auto;
+}
+@keyframes cardIn{from{opacity:0;transform:scale(.96) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* Botón cerrar */
+.modal-close{
+  position:absolute;top:18px;right:20px;
+  background:rgba(255,255,255,.04);border:1px solid #1e1e1e;
+  color:#555;font-size:.85rem;width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .2s,color .2s,border-color .2s;
+  border-radius:2px;
+}
+.modal-close:hover{background:rgba(245,197,0,.1);border-color:rgba(245,197,0,.4);color:#f5c500}
+
+/* Brand logo dentro del modal */
+.modal-brand{margin-bottom:20px}
+
+/* Header */
+.modal-header{margin-bottom:36px}
+.modal-header-top{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.bolt-badge{
+  width:44px;height:44px;flex-shrink:0;
+  background:rgba(245,197,0,.1);border:1px solid rgba(245,197,0,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;
+  animation:boltPulse 2.5s ease-in-out infinite;
+}
+@keyframes boltPulse{0%,100%{border-color:rgba(245,197,0,.3)}50%{border-color:rgba(245,197,0,.7);background:rgba(245,197,0,.15)}}
+.modal-header h1{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:2rem;font-weight:900;text-transform:uppercase;
+  letter-spacing:.04em;color:#fff;line-height:1;margin:0;
+}
+.modal-header p{font-size:.82rem;color:#555;margin-top:6px;letter-spacing:.03em;padding-left:58px}
+
+/* Divisor */
+.modal-divider{height:1px;background:linear-gradient(to right,rgba(245,197,0,.3),transparent);margin-bottom:32px}
+
+/* Formulario */
+.login-form{display:flex;flex-direction:column;gap:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;
+  color:#444;font-weight:700;transition:color .2s;
+}
 .field.filled label,.field:focus-within label{color:#f5c500}
+
+/* Input wrap con borde inferior animado */
 .input-wrap{position:relative;display:flex;align-items:center}
-.input-icon{position:absolute;left:12px;width:15px;height:15px;color:#333;pointer-events:none;transition:color .2s}
+.input-icon{position:absolute;left:14px;width:16px;height:16px;color:#333;pointer-events:none;transition:color .2s;flex-shrink:0}
 .field:focus-within .input-icon{color:#f5c500}
-.input-wrap input{width:100%;background:#0d0d0d;border:1px solid #1e1e1e;color:#f0f0f0;font-family:'Barlow',sans-serif;font-size:.88rem;padding:12px 14px 12px 38px;outline:none;transition:border-color .25s,box-shadow .25s}
-.input-wrap input::placeholder{color:#2e2e2e}
-.input-wrap input:focus{border-color:#f5c500;background:#0f0e09;box-shadow:0 0 0 3px rgba(245,197,0,.07)}
-.eye-btn{position:absolute;right:10px;background:none;border:none;cursor:pointer;width:20px;height:20px;color:#333;padding:0;display:flex;align-items:center;justify-content:center;transition:color .2s}
+
+.input-wrap input{
+  width:100%;
+  background:#080808;
+  border:1px solid #1c1c1c;
+  border-bottom:2px solid #1c1c1c;
+  color:#f0f0f0;
+  font-family:'Barlow',sans-serif;font-size:.95rem;
+  padding:15px 16px 15px 44px;
+  outline:none;
+  transition:border-color .25s,border-bottom-color .25s,background .25s;
+  border-radius:0;
+}
+.input-wrap input::placeholder{color:#252525;font-size:.88rem}
+.input-wrap input:focus{
+  border-color:#252525;
+  border-bottom-color:#f5c500;
+  background:#0b0a07;
+}
+.field.filled .input-wrap input{border-bottom-color:rgba(245,197,0,.4)}
+
+/* Input sin icono izquierdo (registro) */
+.input-wrap input.no-icon{padding-left:16px}
+
+/* Eye button */
+.eye-btn{position:absolute;right:12px;background:none;border:none;cursor:pointer;width:24px;height:24px;color:#2e2e2e;padding:0;display:flex;align-items:center;justify-content:center;transition:color .2s}
 .eye-btn:hover{color:#f5c500}
-.eye-btn svg{width:15px;height:15px}
-.error-box{background:rgba(220,50,30,.08);border:1px solid rgba(220,50,30,.3);color:#e05a45;font-size:.76rem;padding:9px 12px;display:flex;align-items:center;gap:8px}
+.eye-btn svg{width:16px;height:16px}
+
+/* Error */
+.error-box{
+  background:rgba(220,50,30,.06);
+  border-left:3px solid #e05a45;
+  color:#e05a45;font-size:.8rem;
+  padding:11px 14px;display:flex;align-items:center;gap:10px;
+}
 .shake-enter-active{animation:shake .4s cubic-bezier(.36,.07,.19,.97)}
 @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
-.btn-login{position:relative;width:100%;padding:14px;background:transparent;border:1.5px solid #f5c500;color:#f5c500;font-family:'Barlow Condensed',sans-serif;font-size:.9rem;font-weight:900;letter-spacing:.3em;text-transform:uppercase;cursor:pointer;overflow:hidden;margin-top:4px;transition:color .3s;display:flex;align-items:center;justify-content:center}
-.btn-bg{position:absolute;inset:0;background:#f5c500;transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-.btn-login:hover .btn-bg,.btn-login:focus .btn-bg{transform:scaleX(1)}
-.btn-login:hover,.btn-login:focus{color:#0a0a0a;outline:none}
-.btn-login:disabled{opacity:.5;cursor:not-allowed}
+
+/* Botón submit — relleno dorado desde el inicio */
+.btn-login{
+  position:relative;width:100%;padding:17px;
+  background:#f5c500;
+  border:none;
+  color:#0a0a0a;
+  font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+  font-weight:900;letter-spacing:.3em;text-transform:uppercase;
+  cursor:pointer;overflow:hidden;margin-top:6px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .25s,transform .15s;
+}
+.btn-login::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,0);
+  transition:background .25s;
+}
+.btn-login:hover{background:#ffd633;transform:translateY(-1px)}
+.btn-login:active{transform:translateY(0)}
+.btn-login:disabled{opacity:.45;cursor:not-allowed;transform:none}
+/* Eliminamos btn-bg ya que ahora usamos fondo sólido */
+.btn-bg{display:none}
 .btn-label{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
-.spinner{width:14px;height:14px;animation:spin .7s linear infinite}
+.spinner{width:15px;height:15px;animation:spin .7s linear infinite;border:2px solid rgba(0,0,0,.2);border-top-color:#0a0a0a;border-radius:50%}
 @keyframes spin{to{transform:rotate(360deg)}}
-.modal-footer-note{text-align:center;font-size:.62rem;color:#282828;letter-spacing:.1em;text-transform:uppercase;margin-top:24px}
+
+/* Nota footer */
+.modal-footer-note{text-align:center;font-size:.65rem;color:#222;letter-spacing:.12em;text-transform:uppercase;margin-top:28px}
+
+/* Link secundario (¿Ya tenés cuenta?) */
+.modal-switch-link{text-align:center;font-size:.78rem;color:#444;margin-top:18px}
+.modal-switch-link button{background:none;border:none;color:#f5c500;cursor:pointer;font-size:.78rem;font-weight:600;text-decoration:underline;padding:0;transition:color .2s}
+.modal-switch-link button:hover{color:#ffd633}
 
 /* ── REGISTRO GRID ── */
 .reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -906,9 +1063,11 @@ const registerCustomer = async () => {
   .footer-copy{padding:16px 16px 0;text-align:center}
 
   /* Modal */
-  .modal-card{padding:28px 18px 24px}
-  .modal-header h1{font-size:1.3rem}
+  .modal-card{padding:32px 20px 28px;border-left-width:3px}
+  .modal-header h1{font-size:1.6rem}
   .modal-overlay{padding:12px;align-items:flex-start}
+  .bolt-badge{width:36px;height:36px;font-size:1.1rem}
+  .modal-header p{padding-left:0;margin-top:10px}
 
   /* Registro grid → 1 columna */
   .reg-grid{grid-template-columns:1fr}
@@ -920,7 +1079,7 @@ const registerCustomer = async () => {
 @media(max-width:380px){
   .hero{padding:72px 12px 48px}
   .section-inner{padding:0 12px}
-  .modal-card{padding:24px 14px 20px}
+  .modal-card{padding:24px 14px 20px;border-left-width:3px}
   .plan-card{padding:22px 14px}
   .mock-cal-cell{font-size:.48rem}
 }

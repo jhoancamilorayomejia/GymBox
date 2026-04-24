@@ -73,7 +73,7 @@ const cantidadUnidades = ref(1)
 const preferenceId     = ref(null)
 const mostrarWallet    = ref(false)
 
-//filtre de busqueda
+//filtre de busqueda vigentes
 const filtroFechaPagoInicio   = ref('')
 const filtroFechaPagoFin      = ref('')
 
@@ -82,6 +82,16 @@ const filtroFechaInicioFin    = ref('')
 
 const filtroFechaFinInicio    = ref('')
 const filtroFechaFinFin       = ref('')
+
+//filtre de busqueda vencidos
+const filtroVencidoFechaPagoInicio = ref('')
+const filtroVencidoFechaPagoFin = ref('')
+
+const filtroVencidoFechaInicioInicio = ref('')
+const filtroVencidoFechaInicioFin = ref('')
+
+const filtroVencidoFechaFinInicio = ref('')
+const filtroVencidoFechaFinFin = ref('')
 
 const fechaInicio = ref('')
 
@@ -191,11 +201,10 @@ const planesVencidos = computed(() => {
   return planes.value
     .filter(p => p.state?.toLowerCase() === 'pagado' && normalizar(p.datefinish) < hoy)
 
-    // ✅ FILTROS
     .filter(p =>
-      cumpleRango(p.datepay,   filtroFechaPagoInicio.value,   filtroFechaPagoFin.value) &&
-      cumpleRango(p.datestart, filtroFechaInicioInicio.value, filtroFechaInicioFin.value) &&
-      cumpleRango(p.datefinish,filtroFechaFinInicio.value,    filtroFechaFinFin.value)
+      cumpleRango(p.datepay,   filtroVencidoFechaPagoInicio.value,   filtroVencidoFechaPagoFin.value) &&
+      cumpleRango(p.datestart, filtroVencidoFechaInicioInicio.value, filtroVencidoFechaInicioFin.value) &&
+      cumpleRango(p.datefinish,filtroVencidoFechaFinInicio.value,    filtroVencidoFechaFinFin.value)
     )
 
     .sort((a,b) => normalizar(b.datefinish) - normalizar(a.datefinish))
@@ -210,6 +219,17 @@ const limpiarFiltros = () => {
 
   filtroFechaFinInicio.value = ''
   filtroFechaFinFin.value = ''
+}
+
+const limpiarFiltrosVencidos = () => {
+  filtroVencidoFechaPagoInicio.value = ''
+  filtroVencidoFechaPagoFin.value = ''
+
+  filtroVencidoFechaInicioInicio.value = ''
+  filtroVencidoFechaInicioFin.value = ''
+
+  filtroVencidoFechaFinInicio.value = ''
+  filtroVencidoFechaFinFin.value = ''
 }
 
 const abrirModal = async () => {
@@ -664,6 +684,41 @@ onMounted(() => { obtenerPlanes() })
                   </div>
                 </div>
               </div>
+
+              <!--filtre de busqueda planes vencidos-->
+              <div class="section-label">
+  🕓 Filtros de planes vencidos
+</div>
+
+<div class="filtros-box">
+
+  <div class="filtro-group">
+    <label>Fecha de pago</label>
+    <input type="date" v-model="filtroVencidoFechaPagoInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroVencidoFechaPagoFin">
+  </div>
+
+  <div class="filtro-group">
+    <label>Fecha inicio</label>
+    <input type="date" v-model="filtroVencidoFechaInicioInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroVencidoFechaInicioFin">
+  </div>
+
+  <div class="filtro-group">
+    <label>Fecha fin</label>
+    <input type="date" v-model="filtroVencidoFechaFinInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroVencidoFechaFinFin">
+  </div>
+
+  <button class="btn-clear" @click="limpiarFiltrosVencidos">
+    Limpiar
+  </button>
+
+</div>
+
               <div class="table-wrapper table-vencidos">
                 <div class="table-scroll">
                   <table>

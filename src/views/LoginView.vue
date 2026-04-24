@@ -847,11 +847,16 @@ const registerCustomer = async () => {
 .footer-copy{max-width:1200px;margin:0 auto;padding:20px 32px 0;font-size:.68rem;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
 
 /* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.88);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;overflow-y:auto;
+}
 .modal-fade-enter-active,.modal-fade-leave-active{transition:opacity .3s}
 .modal-fade-enter-from,.modal-fade-leave-to{opacity:0}
 
-/* Card principal — más ancha y con acento lateral dorado */
+/* Card desktop */
 .modal-card{
   position:relative;width:100%;max-width:500px;
   background:#0f0f0f;
@@ -1019,7 +1024,7 @@ const registerCustomer = async () => {
 /* ═══════════════════════════════════════
    RESPONSIVE — MÓVIL  (≤600px)
 ═══════════════════════════════════════ */
-@media(max-width:1600px){
+@media(max-width:600px){
   /* Navbar */
   .nav-inner{height:56px;padding:0 16px}
   .logo-svg{width:100px}
@@ -1062,12 +1067,37 @@ const registerCustomer = async () => {
   .footer-links{flex-direction:row;flex-wrap:wrap;gap:14px}
   .footer-copy{padding:16px 16px 0;text-align:center}
 
-  /* Modal */
-  .modal-card{padding:32px 20px 28px;border-left-width:3px}
-  .modal-header h1{font-size:1.6rem}
-  .modal-overlay{padding:12px;align-items:flex-start}
-  .bolt-badge{width:36px;height:36px;font-size:1.1rem}
+  /* Modal — bottom sheet ocupa casi toda la pantalla */
+  .modal-overlay{
+    padding:0;
+    align-items:flex-end;
+    justify-content:stretch;
+  }
+  .modal-card{
+    max-width:100%;
+    width:100%;
+    min-height:92dvh;
+    border-left:none;
+    border-top:3px solid #f5c500;
+    border-right:none;
+    border-bottom:none;
+    border-radius:0;
+    padding:36px 24px 40px;
+    margin:0;
+    animation:sheetUp .35s cubic-bezier(.16,1,.3,1) both;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+  }
+  @keyframes sheetUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .login-form{flex:1}
   .modal-header p{padding-left:0;margin-top:10px}
+  .modal-header h1{font-size:1.8rem}
+  .bolt-badge{width:40px;height:40px;font-size:1.2rem}
+  /* Inputs más grandes en móvil para facilitar toque */
+  .input-wrap input{padding-top:17px;padding-bottom:17px;font-size:1rem}
+  .btn-login{padding:20px;font-size:1rem}
+  .modal-brand svg{width:110px}
 
   /* Registro grid → 1 columna */
   .reg-grid{grid-template-columns:1fr}
@@ -1076,10 +1106,10 @@ const registerCustomer = async () => {
 /* ═══════════════════════════════════════
    RESPONSIVE — MÓVIL PEQUEÑO  (≤380px)
 ═══════════════════════════════════════ */
-@media(max-width:1380px){
+@media(max-width:380px){
   .hero{padding:72px 12px 48px}
   .section-inner{padding:0 12px}
-  .modal-card{padding:24px 14px 20px;border-left-width:3px}
+  .modal-card{padding:28px 18px 36px}
   .plan-card{padding:22px 14px}
   .mock-cal-cell{font-size:.48rem}
 }

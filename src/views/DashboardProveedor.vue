@@ -259,8 +259,15 @@ const cambiarPassword = async () => {
     return
   }
 
-  if (passwordData.value.password.length < 6) {
-    alert('La contraseña debe tener al menos 6 caracteres')
+  if (passwordData.value.password.length < 8) {
+    alert('La contraseña debe tener al menos 8 caracteres')
+    return
+  }
+
+  const tieneLetras  = /[a-zA-Z]/.test(passwordData.value.password)
+  const tieneNumeros = /[0-9]/.test(passwordData.value.password)
+  if (!tieneLetras || !tieneNumeros) {
+    alert('La contraseña debe contener al menos una letra y un número')
     return
   }
 
@@ -313,16 +320,26 @@ const estadoClass = (s) => {
   if (s.toLowerCase() === 'pendiente') return 'badge-pendiente'
   return 'badge-default'
 }
+//para ver que dias tengo restantes
 const dispFila = (p) => {
-  const hoy = hoyMidnight()
-  const ini = normalizar(p.datestart)
-  const fin = normalizar(p.datefinish)
-  if (hoy < ini) { const d = Math.ceil((ini-hoy)/86400000); return { label:`Inicia en ${d}d`, clase:'disp-proximo' } }
-  if (hoy > fin) return { label:'Vencido', clase:'disp-vencido' }
-  const d = Math.ceil((fin-hoy)/86400000)
-  if (d===0) return { label:'Vence hoy', clase:'disp-vencer-hoy' }
-  return { label:`${d}d restantes`, clase:'disp-activo' }
-}
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const inicio = new Date(p.datestart); inicio.setHours(0,0,0,0);
+  const fin = new Date(p.datefinish); fin.setHours(0,0,0,0);
+
+  if (inicio > hoy)
+    return { label: 'Próximo inicio', clase: 'disp-proximo' };
+
+  if (fin < hoy)
+    return { label: 'Vencido', clase: 'disp-vencido' };
+
+  const diff = Math.round((fin - hoy) / 86400000);
+
+  if (diff === 0)
+    return { label: 'Vence hoy', clase: 'disp-vencer-hoy' };
+
+  // ← AQUÍ el cambio: "Días" en vez de "D"
+  return { label: `${diff} Días restantes`, clase: 'disp-activo' };
+};
 
 const resumenPlanes = computed(() => {
   const hoy = hoyMidnight()
@@ -719,15 +736,27 @@ onMounted(() => { obtenerPlanes() })
           <div class="mpay-body" style="display:flex; flex-direction:column; gap:16px; padding:24px 28px;">
             <div class="pass-field">
               <label class="pass-label">NUEVA CONTRASEÑA</label>
-              <input type="password" placeholder="Mínimo 6 caracteres" v-model="passwordData.password" class="mpay-date-input"/>
+              <input type="password" placeholder="Mínimo 8 caracteres, letras y números" v-model="passwordData.password" class="mpay-date-input"/>
             </div>
             <div class="pass-field">
               <label class="pass-label">CONFIRMAR CONTRASEÑA</label>
               <input type="password" placeholder="Repite la contraseña" v-model="passwordData.confirmPassword" class="mpay-date-input"/>
             </div>
-            <div v-if="passwordData.confirmPassword" class="pass-match" :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
-              {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
-            </div>
+            <!-- Indicador de requisitos -->
+<div v-if="passwordData.password" class="pass-requisitos">
+  <div class="req-item" :class="passwordData.password.length >= 8 ? 'req-ok' : 'req-fail'">
+  {{ passwordData.password.length >= 8 ? '✓' : '✕' }} Mínimo 8 caracteres
+</div>
+  <div class="req-item" :class="/[a-zA-Z]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
+    {{ /[a-zA-Z]/.test(passwordData.password) ? '✓' : '✕' }} Al menos una letra
+  </div>
+  <div class="req-item" :class="/[0-9]/.test(passwordData.password) ? 'req-ok' : 'req-fail'">
+    {{ /[0-9]/.test(passwordData.password) ? '✓' : '✕' }} Al menos un número
+  </div>
+</div>
+<div v-if="passwordData.confirmPassword" class="pass-match" :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
+  {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
+</div>
             <button class="mpay-btn-pagar" @click="cambiarPassword" :disabled="guardandoPassword" style="margin-top:4px">
               <span class="mpay-pagar-bolt">🔑</span>
               <span class="mpay-pagar-text">
@@ -1137,4 +1166,20 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
     color: #f5c500;
   }
 }
+
+.pass-requisitos {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.req-item {
+  font-size: .72rem;
+  letter-spacing: .03em;
+  transition: color .2s;
+}
+.req-ok   { color: #4ade80; }
+.req-fail { color: #555; }
 </style>

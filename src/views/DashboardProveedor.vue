@@ -361,6 +361,7 @@ const clasificarDia = (dia) => {
 onMounted(() => { obtenerPlanes() })
 </script>
 
+<!-- ── TEMPLATE ── -->
 <template>
   <div class="screen">
     <div class="bg-layer">
@@ -408,7 +409,6 @@ onMounted(() => { obtenerPlanes() })
             <div class="user-info">
               <span class="user-name">{{ username }}</span>
               <span class="user-role">Cliente</span>
-              <!--span class="user-role">ID #{{ id }} · Miembro</span-->
             </div>
           </div>
           <button class="logout-btn" @click="cerrarSesion" title="Cerrar sesión">
@@ -423,7 +423,6 @@ onMounted(() => { obtenerPlanes() })
           <div class="page-title">
             <span class="page-eyebrow">⚡ Bienvenido de vuelta</span>
             <h1>{{ username }} </h1>
-            <!--span class="id-tag">#{{ id }}</span-->
           </div>
           <div class="header-meta">
             <div class="stat-pill"><span class="stat-val">{{ planes.length }}</span><span class="stat-lbl">Total</span></div>
@@ -431,6 +430,21 @@ onMounted(() => { obtenerPlanes() })
             <div class="stat-pill muted" v-if="planesVencidos.length"><span class="stat-val">{{ planesVencidos.length }}</span><span class="stat-lbl">Vencidos</span></div>
           </div>
         </header>
+
+        <!-- ── ACCIONES MÓVIL (solo visible en móvil) ── -->
+        <div class="mobile-actions">
+          <button class="mob-btn-pass" @click="abrirModalPassword">
+            <span class="mob-btn-icon">🔑</span>
+            <span class="mob-btn-text">Cambiar contraseña</span>
+          </button>
+          <button class="mob-btn-sus" @click="abrirModal">
+            <span class="mob-btn-icon">⚡</span>
+            <span class="mob-btn-text">Nueva suscripción</span>
+          </button>
+          <button class="mob-btn-logout" @click="cerrarSesion" title="Cerrar sesión">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M13 3h4v14h-4M9 14l4-4-4-4M13 10H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
 
         <div v-if="loading" class="state-box">
           <div class="bolt-spin">⚡</div><p>Cargando tus planes...</p>
@@ -690,11 +704,10 @@ onMounted(() => { obtenerPlanes() })
       </div>
     </transition>
 
-    <!-- ✅ MODAL CAMBIAR PASSWORD -->
+    <!-- MODAL CAMBIAR PASSWORD -->
     <transition name="modal-fade">
       <div v-if="mostrarModalPassword" class="modal-overlay" @click.self="cerrarModalPassword">
         <div class="modal-pay" style="max-width: 420px;">
-
           <div class="mpay-header">
             <div>
               <span class="mpay-eyebrow">⚡ RAYOBOX · SEGURIDAD</span>
@@ -703,47 +716,25 @@ onMounted(() => { obtenerPlanes() })
             </div>
             <button class="mpay-close" @click="cerrarModalPassword">✕</button>
           </div>
-
           <div class="mpay-body" style="display:flex; flex-direction:column; gap:16px; padding:24px 28px;">
-
             <div class="pass-field">
               <label class="pass-label">NUEVA CONTRASEÑA</label>
-              <input
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                v-model="passwordData.password"
-                class="mpay-date-input"
-              />
+              <input type="password" placeholder="Mínimo 6 caracteres" v-model="passwordData.password" class="mpay-date-input"/>
             </div>
-
             <div class="pass-field">
               <label class="pass-label">CONFIRMAR CONTRASEÑA</label>
-              <input
-                type="password"
-                placeholder="Repite la contraseña"
-                v-model="passwordData.confirmPassword"
-                class="mpay-date-input"
-              />
+              <input type="password" placeholder="Repite la contraseña" v-model="passwordData.confirmPassword" class="mpay-date-input"/>
             </div>
-
-            <!-- Indicador de coincidencia -->
             <div v-if="passwordData.confirmPassword" class="pass-match" :class="passwordData.password === passwordData.confirmPassword ? 'match-ok' : 'match-fail'">
               {{ passwordData.password === passwordData.confirmPassword ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden' }}
             </div>
-
-            <button
-              class="mpay-btn-pagar"
-              @click="cambiarPassword"
-              :disabled="guardandoPassword"
-              style="margin-top:4px"
-            >
+            <button class="mpay-btn-pagar" @click="cambiarPassword" :disabled="guardandoPassword" style="margin-top:4px">
               <span class="mpay-pagar-bolt">🔑</span>
               <span class="mpay-pagar-text">
                 <span class="mpay-pagar-titulo">{{ guardandoPassword ? 'Guardando...' : 'Guardar contraseña' }}</span>
                 <span class="mpay-pagar-monto">{{ username }}</span>
               </span>
             </button>
-
           </div>
         </div>
       </div>
@@ -1046,5 +1037,104 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
   .main { padding: 28px 20px 40px; }
   .mpay-body { grid-template-columns: 1fr; overflow-y: auto; }
   .mpay-left { border-right: none; border-bottom: 1px solid rgba(245,197,0,.08); }
+}
+
+/* ── ACCIONES MÓVIL ── */
+.mobile-actions {
+  display: none; /* oculto en desktop */
+}
+
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 40px; }
+  .mpay-body { grid-template-columns: 1fr; overflow-y: auto; }
+  .mpay-left { border-right: none; border-bottom: 1px solid rgba(245,197,0,.08); }
+
+  /* Mostrar barra de acciones en móvil */
+  .mobile-actions {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex-shrink: 0;
+  }
+
+  .mob-btn-pass,
+  .mob-btn-sus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid;
+    background: transparent;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: .78rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+    flex: 1;
+  }
+
+  .mob-btn-pass {
+    color: #aaa;
+    border-color: rgba(255,255,255,.1);
+    background: rgba(255,255,255,.03);
+  }
+  .mob-btn-pass:hover {
+    border-color: rgba(245,197,0,.35);
+    color: #f5c500;
+    background: rgba(245,197,0,.05);
+  }
+
+  .mob-btn-sus {
+    color: #0a0a0a;
+    border-color: #f5c500;
+    background: linear-gradient(135deg, #f5c500, #ff9500);
+    position: relative;
+    overflow: hidden;
+  }
+  .mob-btn-sus::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .mob-btn-sus:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 20px rgba(245,197,0,.35);
+  }
+
+  .mob-btn-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .mob-btn-text {
+    white-space: nowrap;
+  }
+
+  .mob-btn-logout {
+    width: 44px;
+    height: auto;
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.08);
+    color: #444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+  }
+  .mob-btn-logout svg {
+    width: 16px;
+    height: 16px;
+  }
+  .mob-btn-logout:hover {
+    border-color: rgba(245,197,0,.4);
+    color: #f5c500;
+  }
 }
 </style>

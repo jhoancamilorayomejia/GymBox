@@ -768,7 +768,12 @@ onMounted(() => { obtenerPlanes() })
 
 .layout { position: relative; z-index: 1; display: flex; width: 100%; height: 100vh; }
 
-.sidebar { width: 230px; height: 100vh; background: #0d0d0d; border-right: 1px solid rgba(245,197,0,.1); display: flex; flex-direction: column; padding: 32px 0 24px; flex-shrink: 0; }
+.sidebar {
+    display: flex; /* en vez de none */
+    width: 100%;
+    height: auto;
+    flex-direction: row; /* opcional */
+  }
 .sidebar-logo { padding: 0 24px 28px; border-bottom: 1px solid rgba(245,197,0,.08); margin-bottom: 24px; }
 .sidebar-logo svg { width: 130px; height: auto; filter: drop-shadow(0 0 18px rgba(245,197,0,.18)); }
 .sidebar-sub { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .55rem; letter-spacing: .35em; text-transform: uppercase; color: #444; margin-top: 4px; }

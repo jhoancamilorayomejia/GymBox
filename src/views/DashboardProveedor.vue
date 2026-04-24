@@ -12,6 +12,7 @@ const errorMsg    = ref('')
 const viewDate    = ref(new Date())
 const verVencidos = ref(false)
 
+
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
@@ -71,6 +72,16 @@ const planSeleccionado = ref(null)
 const cantidadUnidades = ref(1)
 const preferenceId     = ref(null)
 const mostrarWallet    = ref(false)
+
+//filtre de busqueda
+const filtroFechaPagoInicio   = ref('')
+const filtroFechaPagoFin      = ref('')
+
+const filtroFechaInicioInicio = ref('')
+const filtroFechaInicioFin    = ref('')
+
+const filtroFechaFinInicio    = ref('')
+const filtroFechaFinFin       = ref('')
 
 const fechaInicio = ref('')
 
@@ -138,6 +149,67 @@ const obtenerPricePlans = async () => {
   } catch (err) {
     console.error('Error cargando pricePlans:', err)
   }
+}
+
+const cumpleRango = (fecha, inicio, fin) => {
+  if (!inicio && !fin) return true
+
+  const f = normalizar(fecha)
+
+  if (inicio) {
+    const i = normalizar(inicio)
+    if (f < i) return false
+  }
+
+  if (fin) {
+    const f2 = normalizar(fin)
+    if (f > f2) return false
+  }
+
+  return true
+}
+
+const planesActivos = computed(() => {
+  const hoy = hoyMidnight()
+
+  return planes.value
+    .filter(p => p.state?.toLowerCase() === 'pagado' && normalizar(p.datefinish) >= hoy)
+
+    // ✅ FILTROS
+    .filter(p =>
+      cumpleRango(p.datepay,   filtroFechaPagoInicio.value,   filtroFechaPagoFin.value) &&
+      cumpleRango(p.datestart, filtroFechaInicioInicio.value, filtroFechaInicioFin.value) &&
+      cumpleRango(p.datefinish,filtroFechaFinInicio.value,    filtroFechaFinFin.value)
+    )
+
+    .sort((a,b) => normalizar(a.datestart) - normalizar(b.datestart))
+})
+
+const planesVencidos = computed(() => {
+  const hoy = hoyMidnight()
+
+  return planes.value
+    .filter(p => p.state?.toLowerCase() === 'pagado' && normalizar(p.datefinish) < hoy)
+
+    // ✅ FILTROS
+    .filter(p =>
+      cumpleRango(p.datepay,   filtroFechaPagoInicio.value,   filtroFechaPagoFin.value) &&
+      cumpleRango(p.datestart, filtroFechaInicioInicio.value, filtroFechaInicioFin.value) &&
+      cumpleRango(p.datefinish,filtroFechaFinInicio.value,    filtroFechaFinFin.value)
+    )
+
+    .sort((a,b) => normalizar(b.datefinish) - normalizar(a.datefinish))
+})
+
+const limpiarFiltros = () => {
+  filtroFechaPagoInicio.value = ''
+  filtroFechaPagoFin.value = ''
+
+  filtroFechaInicioInicio.value = ''
+  filtroFechaInicioFin.value = ''
+
+  filtroFechaFinInicio.value = ''
+  filtroFechaFinFin.value = ''
 }
 
 const abrirModal = async () => {
@@ -489,6 +561,37 @@ onMounted(() => { obtenerPlanes() })
               </div>
             </div>
           </div>
+  
+  <div class="section-label">
+  🔎 Filtros de búsqueda
+</div>
+
+  <div class="filtros-box">
+  <!--filtre de planes vigentes-->
+  <div class="filtro-group">
+    <label>Fecha de pago</label>
+    <input type="date" v-model="filtroFechaPagoInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroFechaPagoFin">
+  </div>
+
+  <div class="filtro-group">
+    <label>Fecha inicio</label>
+    <input type="date" v-model="filtroFechaInicioInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroFechaInicioFin">
+  </div>
+
+  <div class="filtro-group">
+    <label>Fecha fin</label>
+    <input type="date" v-model="filtroFechaFinInicio">
+    <span>→</span>
+    <input type="date" v-model="filtroFechaFinFin">
+  </div>
+
+  <button class="btn-clear" @click="limpiarFiltros">Limpiar</button>
+
+</div>
 
           <div class="section-label">
             <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -1041,5 +1144,70 @@ td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
   .main { padding: 28px 20px 40px; }
   .mpay-body { grid-template-columns: 1fr; overflow-y: auto; }
   .mpay-left { border-right: none; border-bottom: 1px solid rgba(245,197,0,.08); }
+}
+
+/* 🔎 FILTROS */
+.filtros-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: #111;
+  border: 1px solid rgba(245,197,0,.12);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  animation: fadeUp .45s ease both;
+}
+
+.filtro-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0d0d0d;
+  border: 1px solid rgba(245,197,0,.15);
+  padding: 8px 10px;
+}
+
+.filtro-group label {
+  font-family: 'Barlow Condensed',sans-serif;
+  font-size: .55rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: #f5c500;
+}
+
+.filtro-group span {
+  color: #555;
+  font-size: .8rem;
+}
+
+.filtro-group input {
+  background: transparent;
+  border: none;
+  color: #f0f0f0;
+  font-size: .75rem;
+  outline: none;
+}
+
+.filtro-group input::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(5) hue-rotate(10deg);
+  cursor: pointer;
+}
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid rgba(245,197,0,.25);
+  color: #f5c500;
+  font-family: 'Barlow Condensed',sans-serif;
+  font-size: .65rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn-clear:hover {
+  background: rgba(245,197,0,.1);
+  border-color: #f5c500;
 }
 </style>

@@ -1305,7 +1305,7 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid rgba(245,197,0,.1); position: sticky; bottom: 0; background: #111; }
 .btn-cancel { background: transparent; border: 1px solid #222; color: #555; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 9px 20px; cursor: pointer; transition: all .2s; }
 .btn-cancel:hover { border-color: rgba(245,197,0,.3); color: #aaa; }
-.btn-save { background: var(--gold); border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 24px; cursor: pointer; transition: all .2s; }
+.btn-save { background: var(--gold); border: none; color: #61630d; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 24px; cursor: pointer; transition: all .2s; }
 .btn-save:hover:not(:disabled) { background: #ffd700; box-shadow: 0 0 18px rgba(245,197,0,.3); }
 .btn-save:disabled { opacity: .5; cursor: not-allowed; }
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .22s; }

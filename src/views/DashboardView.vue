@@ -1037,8 +1037,10 @@ onMounted(() => { obtenerUsuarios() })
 /* ── Screen ── */
 .screen {
   width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #0a0a0a;
   color: #ccc;
   font-family: 'Barlow', sans-serif;
@@ -1157,12 +1159,15 @@ onMounted(() => { obtenerUsuarios() })
 
 /* ── Main ── */
 .main {
-  flex: 1; height: 100vh;
+  flex: 1;
+  min-height: 100dvh;
+  height: auto;
   overflow-y: auto;
   padding: 48px 60px;
   display: flex; flex-direction: column; gap: 26px;
   min-width: 0;
   background: #0a0a0a;
+  position: relative;
 }
 
 /* ── Page header (desktop) ── */

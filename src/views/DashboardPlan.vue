@@ -16,6 +16,7 @@ const saving    = ref(false)
 const saveError = ref('')
 
 // ── Filtros ─────────────────────────────────────────────
+const filtrosAbiertos = ref(false)
 const filtro = ref({
   tipo_plan: '',
   estado: '',
@@ -23,6 +24,10 @@ const filtro = ref({
   fecha_inicio: '',
   fecha_fin: ''
 })
+
+const hayFiltrosActivos = computed(() =>
+  Object.values(filtro.value).some(v => v !== '')
+)
 
 const planesFiltrados = computed(() => {
   return planes.value.filter(p => {
@@ -66,7 +71,7 @@ const eliminarPlanesFiltrados = async () => {
   }
 }
 
-// ── Helper: parsea "YYYY-MM-DD" o "YYYY-MM-DDTHH:..." como fecha LOCAL (sin desfase UTC)
+// ── Helper: parsea "YYYY-MM-DD" como fecha local (sin desfase UTC)
 const parseLocalDate = (str) => {
   if (!str) return null
   const [y, m, d] = str.split('T')[0].split('-').map(Number)
@@ -100,44 +105,31 @@ const cambiarCalMes = (delta) => {
   calViewDate.value = d
 }
 
-// ── Clasificar día del calendario (CORREGIDO: usa parseLocalDate) ──
 const clasificarDiaCal = (dia) => {
   if (!planCalendario.value) return { disponible: false, vencido: false, esHoy: false }
-
   const y     = calViewDate.value.getFullYear()
   const m     = calViewDate.value.getMonth()
   const fecha = new Date(y, m, dia); fecha.setHours(0, 0, 0, 0)
   const hoy   = new Date(); hoy.setHours(0, 0, 0, 0)
   const esHoy = fecha.getTime() === hoy.getTime()
-
   const ini = parseLocalDate(planCalendario.value.datestart)
   const fin = parseLocalDate(planCalendario.value.datefinish)
-
   if (fecha < ini || fecha > fin) return { disponible: false, vencido: false, esHoy }
-
   const esPasado = fin < hoy
-  return {
-    disponible: !esPasado,
-    vencido:    esPasado,
-    esHoy
-  }
+  return { disponible: !esPasado, vencido: esPasado, esHoy }
 }
 
-// ── Info resumida del plan en el modal (CORREGIDO: usa parseLocalDate) ──
 const planCalInfo = computed(() => {
   if (!planCalendario.value) return null
   const p   = planCalendario.value
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
   const ini = parseLocalDate(p.datestart)
   const fin = parseLocalDate(p.datefinish)
-
   let estado, colorClass
   if (fin < hoy)      { estado = 'Vencido';       colorClass = 'info-vencido' }
   else if (ini > hoy) { estado = 'Próximo inicio'; colorClass = 'info-proximo' }
   else                { estado = 'Activo';         colorClass = 'info-activo'  }
-
   const diasRest = fin >= hoy ? Math.ceil((fin - hoy) / 86400000) : 0
-
   return { estado, colorClass, diasRest, ini, fin }
 })
 
@@ -284,7 +276,7 @@ onMounted(() => { obtenerPlanes() })
 
     <div class="layout">
 
-      <!-- ── Sidebar ── -->
+      <!-- ── Sidebar (solo desktop) ── -->
       <aside class="sidebar">
         <div class="sidebar-logo">
           <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
@@ -318,10 +310,34 @@ onMounted(() => { obtenerPlanes() })
         </div>
       </aside>
 
+      <!-- ── Topbar móvil ── -->
+      <header class="topbar-mobile">
+        <button class="topbar-back" @click="router.push('/dashboard')">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M12 16l-5-6 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="topbar-logo-mobile">
+          <svg viewBox="0 0 160 52" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="20,2 12,22 18,22 10,44 32,20 22,20 34,2" fill="#f5c500"/>
+            <text x="38" y="22" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="20" fill="#f5c500" letter-spacing="-0.5">RAYO</text>
+            <text x="38" y="42" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="20" fill="#ffffff" letter-spacing="-0.5">BOX</text>
+          </svg>
+        </div>
+        <div class="topbar-mobile-actions">
+          <button class="mob-action-btn" @click="showModal = true; resetForm()">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="user-avatar-sm">{{ username.charAt(0).toUpperCase() }}</div>
+          <button class="logout-btn-sm" @click="cerrarSesion">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M13 3h4v14h-4M9 14l4-4-4-4M13 10H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </header>
+
       <!-- ── Main ── -->
       <main class="main">
 
-        <div class="breadcrumb" @click="router.push('/dashboard')">
+        <!-- breadcrumb solo desktop -->
+        <div class="breadcrumb desktop-only" @click="router.push('/dashboard')">
           <svg viewBox="0 0 20 20" fill="none"><path d="M12 16l-5-6 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Volver a Clientes
         </div>
@@ -340,6 +356,14 @@ onMounted(() => { obtenerPlanes() })
               <span class="stat-val">{{ planes.filter(p => p.state?.toLowerCase() === 'pagado').length }}</span>
               <span class="stat-lbl">Pagados</span>
             </div>
+            <!-- Botón agregar en desktop va aquí también -->
+            <button class="btn-agregar desktop-only" @click="showModal = true; resetForm()">
+              <svg viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              Agregar Plan
+            </button>
           </div>
         </header>
 
@@ -352,116 +376,187 @@ onMounted(() => { obtenerPlanes() })
           <button class="retry-btn" @click="obtenerPlanes">Reintentar</button>
         </div>
 
-        <div v-else class="table-wrapper">
+        <div v-else class="content-area">
 
-          <div class="filtros-box">
-            <div class="filtro-item">
-              <label>Tipo de plan</label>
-              <input v-model="filtro.tipo_plan" placeholder="Ej: mes" />
-            </div>
-            <div class="filtro-item">
-              <label>Estado</label>
-              <select v-model="filtro.estado">
-                <option value="">Todos</option>
-                <option value="pagado">Pagado</option>
-                <option value="pendiente">Pendiente</option>
-              </select>
-            </div>
-            <div class="filtro-item">
-              <label>Fecha de pago</label>
-              <input type="date" v-model="filtro.fecha_pago" />
-            </div>
-            <div class="filtro-item">
-              <label>Fecha inicio</label>
-              <input type="date" v-model="filtro.fecha_inicio" />
-            </div>
-            <div class="filtro-item">
-              <label>Fecha fin</label>
-              <input type="date" v-model="filtro.fecha_fin" />
-            </div>
-            <div class="filtro-item btn-box">
-              <button @click="filtro = { tipo_plan:'', estado:'', fecha_pago:'', fecha_inicio:'', fecha_fin:'' }">
+          <!-- ── Filtros ── -->
+          <div class="filtros-wrapper">
+            <div class="filtros-toggle-row">
+              <button class="filtros-toggle" @click="filtrosAbiertos = !filtrosAbiertos">
+                <svg viewBox="0 0 20 20" fill="none"><path d="M3 5h14M6 10h8M9 15h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                Filtros
+                <span v-if="hayFiltrosActivos" class="filtros-badge">●</span>
+                <svg class="filtros-chevron" :class="{ open: filtrosAbiertos }" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <span class="filtros-count">{{ planesFiltrados.length }} / {{ planes.length }} planes</span>
+              <button v-if="hayFiltrosActivos" class="filtros-clear-inline" @click="filtro = { tipo_plan:'', estado:'', fecha_pago:'', fecha_inicio:'', fecha_fin:'' }">
                 Limpiar
               </button>
-              <button @click="eliminarPlanesFiltrados">
-                Borrar visibles
-              </button>
+            </div>
+
+            <transition name="filtros-slide">
+              <div v-if="filtrosAbiertos" class="filtros-panel">
+                <div class="filtros-grid">
+                  <div class="filtro-item">
+                    <label>Tipo de plan</label>
+                    <input v-model="filtro.tipo_plan" placeholder="Ej: mes" />
+                  </div>
+                  <div class="filtro-item">
+                    <label>Estado</label>
+                    <select v-model="filtro.estado">
+                      <option value="">Todos</option>
+                      <option value="pagado">Pagado</option>
+                      <option value="pendiente">Pendiente</option>
+                    </select>
+                  </div>
+                  <div class="filtro-item">
+                    <label>Fecha de pago</label>
+                    <input type="date" v-model="filtro.fecha_pago" />
+                  </div>
+                  <div class="filtro-item">
+                    <label>Fecha inicio</label>
+                    <input type="date" v-model="filtro.fecha_inicio" />
+                  </div>
+                  <div class="filtro-item">
+                    <label>Fecha fin</label>
+                    <input type="date" v-model="filtro.fecha_fin" />
+                  </div>
+                </div>
+                <div class="filtros-actions">
+                  <button class="f-btn f-btn-clear" @click="filtro = { tipo_plan:'', estado:'', fecha_pago:'', fecha_inicio:'', fecha_fin:'' }">
+                    Limpiar filtros
+                  </button>
+                  <button class="f-btn f-btn-danger" @click="eliminarPlanesFiltrados">
+                    Borrar visibles ({{ planesFiltrados.length }})
+                  </button>
+                </div>
+              </div>
+            </transition>
+          </div>
+
+          <!-- ── Cards móvil ── -->
+          <div class="cards-list mobile-only">
+            <div v-for="(p, i) in planesFiltrados" :key="p.idplan"
+                 class="plan-card" :style="{ animationDelay: i * 40 + 'ms' }">
+              <div class="plan-card-top">
+                <div class="plan-tipo">
+                  <span class="tipo-icon">⚡</span>
+                  <span class="tipo-label">{{ p.typeplan }}</span>
+                </div>
+                <span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span>
+              </div>
+              <div class="plan-card-precio">
+                <span class="precio-val">${{ Number(p.price).toLocaleString('es-CO') }}</span>
+                <span class="precio-desc">COP</span>
+              </div>
+              <div class="plan-card-fechas">
+                <div class="fecha-item">
+                  <span class="fecha-lbl">Pago</span>
+                  <span class="fecha-val">{{ fmtFecha(p.datepay) }}</span>
+                </div>
+                <div class="fecha-sep">→</div>
+                <div class="fecha-item">
+                  <span class="fecha-lbl">Inicio</span>
+                  <span class="fecha-val">{{ fmtFecha(p.datestart) }}</span>
+                </div>
+                <div class="fecha-sep">→</div>
+                <div class="fecha-item">
+                  <span class="fecha-lbl">Fin</span>
+                  <span class="fecha-val">{{ fmtFecha(p.datefinish) }}</span>
+                </div>
+              </div>
+              <div class="plan-card-footer">
+                <button class="btn-cal-sm" @click="abrirCalendario(p)">
+                  <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 2v4M13 2v4M3 9h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  Calendario
+                </button>
+                <div class="plan-card-actions">
+                  <button class="action-btn edit-btn" @click="abrirEditar(p)">
+                    <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button class="action-btn delete-btn" @click="eliminarPlan(p.idplan)">
+                    <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="!planes.length" class="empty-card empty-card--full">
+              <span class="empty-icon">📋</span>
+              <p class="empty-titulo">Sin planes aún</p>
+              <p class="empty-sub">Usa el botón + para crear el primero.</p>
+            </div>
+            <div v-else-if="!planesFiltrados.length" class="empty-card">
+              ⚡ Sin resultados con los filtros actuales
             </div>
           </div>
 
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Tipo de Plan</th>
-                  <th>Precio</th>
-                  <th>Fecha Pago</th>
-                  <th>Inicio</th>
-                  <th>Fin</th>
-                  <th>Estado</th>
-                  <th>Calendario</th>
-                  <th class="th-add">
-                    <button class="btn-agregar" @click="showModal = true; resetForm()">
-                      <svg viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/>
-                        <path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                      </svg>
-                      Agregar Plan
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(p, i) in planesFiltrados" :key="p.idplan"
-                    class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
-                  <td><span class="tipo-label">{{ p.typeplan }}</span></td>
-                  <td><span class="precio-val">${{ Number(p.price).toLocaleString('es-CO') }}</span></td>
-                  <td>{{ fmtFecha(p.datepay) }}</td>
-                  <td>{{ fmtFecha(p.datestart) }}</td>
-                  <td>{{ fmtFecha(p.datefinish) }}</td>
-                  <td><span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span></td>
-                  <td class="td-cal">
-                    <button class="btn-cal" @click="abrirCalendario(p)">
-                      <svg viewBox="0 0 20 20" fill="none">
-                        <rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-                        <path d="M7 2v4M13 2v4M3 9h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                      </svg>
-                      Ver calendario
-                    </button>
-                  </td>
-                  <td class="td-center">
-                    <button class="action-btn edit-btn" @click="abrirEditar(p)" title="Editar">
-                      <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-                    </button>
-                    <button class="action-btn delete-btn" @click="eliminarPlan(p.idplan)" title="Eliminar">
-                      <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="!planes.length">
-                  <td colspan="8" class="empty-row">
-                    ⚡ Este cliente no tiene planes aún.
-                    <span class="empty-cta" @click="showModal = true; resetForm()">Crear el primero →</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- ── Tabla desktop ── -->
+          <div class="table-wrapper desktop-only">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo de Plan</th>
+                    <th>Precio</th>
+                    <th>Fecha Pago</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Estado</th>
+                    <th>Calendario</th>
+                    <th class="th-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(p, i) in planesFiltrados" :key="p.idplan"
+                      class="table-row" :style="{ animationDelay: i * 40 + 'ms' }">
+                    <td><span class="tipo-label">{{ p.typeplan }}</span></td>
+                    <td><span class="precio-val">${{ Number(p.price).toLocaleString('es-CO') }}</span></td>
+                    <td>{{ fmtFecha(p.datepay) }}</td>
+                    <td>{{ fmtFecha(p.datestart) }}</td>
+                    <td>{{ fmtFecha(p.datefinish) }}</td>
+                    <td><span class="estado-badge" :class="estadoClass(p.state)">{{ p.state }}</span></td>
+                    <td class="td-cal">
+                      <button class="btn-cal" @click="abrirCalendario(p)">
+                        <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 2v4M13 2v4M3 9h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                        Ver calendario
+                      </button>
+                    </td>
+                    <td class="td-center">
+                      <button class="action-btn edit-btn" @click="abrirEditar(p)" title="Editar">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="M14.5 3.5l2 2L6 16l-3 1 1-3 11.5-10.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                      </button>
+                      <button class="action-btn delete-btn" @click="eliminarPlan(p.idplan)" title="Eliminar">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="M5 7h10l-1 9H6L5 7zM3 7h14M8 7V5h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!planes.length">
+                    <td colspan="8" class="empty-row">
+                      ⚡ Este cliente no tiene planes aún.
+                      <span class="empty-cta" @click="showModal = true; resetForm()">Crear el primero →</span>
+                    </td>
+                  </tr>
+                  <tr v-else-if="!planesFiltrados.length">
+                    <td colspan="8" class="empty-row">⚡ Sin resultados con los filtros actuales</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-footer">
+              Mostrando <strong>{{ planesFiltrados.length }}</strong> de <strong>{{ planes.length }}</strong> plan{{ planes.length !== 1 ? 'es' : '' }} para <strong>{{ nombreCliente }}</strong>
+            </div>
           </div>
-          <div class="table-footer">
-            Mostrando <strong>{{ planes.length }}</strong> plan{{ planes.length !== 1 ? 'es' : '' }} para <strong>{{ nombreCliente }}</strong>
-          </div>
-        </div>
 
+        </div>
       </main>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════ -->
-    <!-- MODAL CALENDARIO VISUAL                                    -->
+    <!-- MODAL CALENDARIO                                           -->
     <!-- ══════════════════════════════════════════════════════════ -->
     <transition name="modal-fade">
       <div v-if="showCalModal" class="modal-overlay" @click.self="showCalModal = false">
         <div class="modal modal-cal">
-
           <div class="modal-header">
             <div>
               <span class="modal-eyebrow">⚡ Disponibilidad</span>
@@ -471,7 +566,6 @@ onMounted(() => { obtenerPlanes() })
             <button class="modal-close" @click="showCalModal = false">✕</button>
           </div>
 
-          <!-- Info rápida del plan -->
           <div class="cal-info-row" v-if="planCalInfo">
             <div class="cal-info-item">
               <span class="ci-key">Estado</span>
@@ -496,19 +590,15 @@ onMounted(() => { obtenerPlanes() })
             </div>
           </div>
 
-          <!-- Calendario -->
           <div class="modal-body cal-body">
-
             <div class="cal-nav">
               <button class="cal-arrow" @click="cambiarCalMes(-1)">&#8249;</button>
               <span class="cal-mes">{{ calMesLabel }}</span>
               <button class="cal-arrow" @click="cambiarCalMes(1)">&#8250;</button>
             </div>
-
             <div class="cal-header-row">
               <span v-for="d in DIAS" :key="d">{{ d }}</span>
             </div>
-
             <div class="cal-grid">
               <div v-for="n in calPrimerDia" :key="'e'+n" class="cal-empty"></div>
               <div
@@ -521,25 +611,19 @@ onMounted(() => { obtenerPlanes() })
                   'dia-hoy':     clasificarDiaCal(dia).esHoy,
                   'dia-ninguno': !clasificarDiaCal(dia).disponible && !clasificarDiaCal(dia).vencido && !clasificarDiaCal(dia).esHoy
                 }"
-              >
-                {{ dia }}
-              </div>
+              >{{ dia }}</div>
             </div>
-
-            <!-- Leyenda -->
             <div class="cal-leyenda">
-              <div class="ley-item"><span class="ley-dot dot-activo"></span> Día disponible</div>
-              <div class="ley-item"><span class="ley-dot dot-vencido"></span> Día vencido</div>
+              <div class="ley-item"><span class="ley-dot dot-activo"></span> Disponible</div>
+              <div class="ley-item"><span class="ley-dot dot-vencido"></span> Vencido</div>
               <div class="ley-item"><span class="ley-dot dot-hoy"></span> Hoy</div>
-              <div class="ley-item"><span class="ley-dot dot-ninguno"></span> Fuera del plan</div>
+              <div class="ley-item"><span class="ley-dot dot-ninguno"></span> Fuera</div>
             </div>
-
           </div>
 
           <div class="modal-footer">
             <button class="btn-cancel" @click="showCalModal = false">Cerrar</button>
           </div>
-
         </div>
       </div>
     </transition>
@@ -678,7 +762,13 @@ onMounted(() => { obtenerPlanes() })
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-.screen { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0a; font-family: 'Barlow', sans-serif; position: relative; }
+:root {
+  --topbar-mob-h: 56px;
+  --gold: #f5c500;
+  --orange: #ff7a00;
+}
+
+.screen { width: 100vw; min-height: 100dvh; background: #0a0a0a; font-family: 'Barlow', sans-serif; position: relative; overflow-x: hidden; }
 
 /* Fondo */
 .bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
@@ -690,10 +780,56 @@ onMounted(() => { obtenerPlanes() })
 .slash-2 { width: 1px; height: 40vh; background: linear-gradient(to bottom,transparent,rgba(255,122,0,.08) 50%,transparent); top: 30%; left: 230px; transform: rotate(12deg); }
 .noise { position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E"); opacity: .02; }
 
-.layout { position: relative; z-index: 1; display: flex; width: 100%; height: 100vh; }
+.layout { position: relative; z-index: 1; display: flex; width: 100%; min-height: 100dvh; }
 
-/* Sidebar */
-.sidebar { width: 230px; height: 100vh; background: #0d0d0d; border-right: 1px solid rgba(245,197,0,.1); display: flex; flex-direction: column; padding: 32px 0 24px; flex-shrink: 0; }
+/* ── Topbar móvil ── */
+.topbar-mobile {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  height: var(--topbar-mob-h);
+  background: #0d0d0d;
+  border-bottom: 1px solid rgba(245,197,0,.12);
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+.topbar-back {
+  background: none; border: 1px solid rgba(245,197,0,.2); color: var(--gold);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all .2s;
+}
+.topbar-back svg { width: 16px; height: 16px; }
+.topbar-back:hover { background: rgba(245,197,0,.1); }
+.topbar-logo-mobile { flex: 1; display: flex; justify-content: center; }
+.topbar-logo-mobile svg { width: 80px; height: auto; filter: drop-shadow(0 0 8px rgba(245,197,0,.1)); }
+.topbar-mobile-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mob-action-btn {
+  background: rgba(245,197,0,.1); border: 1px solid rgba(245,197,0,.35); color: var(--gold);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s;
+}
+.mob-action-btn svg { width: 16px; height: 16px; }
+.mob-action-btn:hover { background: rgba(245,197,0,.2); }
+.user-avatar-sm {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--gold), var(--orange));
+  color: #0a0a0a; font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900; font-size: .8rem;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.logout-btn-sm {
+  background: none; border: 1px solid rgba(220,50,30,.25); color: #e05a45;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s;
+}
+.logout-btn-sm svg { width: 13px; height: 13px; }
+.logout-btn-sm:hover { background: rgba(220,50,30,.1); border-color: rgba(220,50,30,.5); }
+
+/* ── Sidebar ── */
+.sidebar { width: 230px; height: 100vh; position: sticky; top: 0; background: #0d0d0d; border-right: 1px solid rgba(245,197,0,.1); display: flex; flex-direction: column; padding: 32px 0 24px; flex-shrink: 0; }
 .sidebar-logo { padding: 0 24px 28px; border-bottom: 1px solid rgba(245,197,0,.08); margin-bottom: 24px; }
 .sidebar-logo svg { width: 130px; height: auto; filter: drop-shadow(0 0 18px rgba(245,197,0,.18)); }
 .sidebar-sub { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .55rem; letter-spacing: .35em; text-transform: uppercase; color: #444; margin-top: 4px; }
@@ -701,154 +837,229 @@ onMounted(() => { obtenerPlanes() })
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; color: #555; font-size: .82rem; font-weight: 500; letter-spacing: .04em; text-decoration: none; border-left: 2px solid transparent; transition: all .2s; cursor: pointer; }
 .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
 .nav-item:hover { color: #f0f0f0; background: rgba(245,197,0,.05); }
-.nav-item.active { color: #f5c500; border-left-color: #f5c500; background: rgba(245,197,0,.07); }
+.nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(245,197,0,.07); }
 .sidebar-footer { padding: 20px 16px 0; border-top: 1px solid rgba(245,197,0,.08); display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .user-chip { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-.user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg,#f5c500,#ff7a00); color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg,var(--gold),var(--orange)); color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: .95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .user-info { display: flex; flex-direction: column; min-width: 0; }
 .user-name { font-size: .78rem; color: #e0e0e0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-role { font-size: .6rem; color: #555; letter-spacing: .08em; }
 .logout-btn { background: none; border: 1px solid #1e1e1e; color: #444; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .2s; }
 .logout-btn svg { width: 15px; height: 15px; }
-.logout-btn:hover { border-color: rgba(245,197,0,.4); color: #f5c500; }
+.logout-btn:hover { border-color: rgba(245,197,0,.4); color: var(--gold); }
 
-/* Main */
-.main { flex: 1; height: 100vh; overflow-y: auto; padding: 48px 60px; display: flex; flex-direction: column; gap: 26px; min-width: 0; }
+/* ── Main ── */
+.main { flex: 1; min-height: 100dvh; overflow-y: auto; padding: 48px 60px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
 .breadcrumb { display: inline-flex; align-items: center; gap: 6px; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: #555; cursor: pointer; transition: color .2s; width: fit-content; flex-shrink: 0; }
 .breadcrumb svg { width: 14px; height: 14px; }
-.breadcrumb:hover { color: #f5c500; }
+.breadcrumb:hover { color: var(--gold); }
 
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; flex-shrink: 0; }
-.page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 6px; }
+.page-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .65rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
 .page-title h1 { font-family: 'Barlow Condensed',sans-serif; font-size: 3.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: #fff; line-height: 1; }
-.header-meta { display: flex; gap: 12px; }
+.header-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .stat-pill { display: flex; flex-direction: column; align-items: center; background: #111; border: 1px solid rgba(245,197,0,.12); padding: 10px 22px; gap: 2px; }
 .stat-pill.accent { border-color: rgba(245,197,0,.3); background: rgba(245,197,0,.06); }
-.stat-val { font-family: 'Barlow Condensed',sans-serif; font-size: 1.7rem; font-weight: 900; color: #f5c500; line-height: 1; }
+.stat-val { font-family: 'Barlow Condensed',sans-serif; font-size: 1.7rem; font-weight: 900; color: var(--gold); line-height: 1; }
 .stat-lbl { font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: #555; }
 
+.btn-agregar { display: inline-flex; align-items: center; gap: 7px; background: var(--gold); border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 18px; cursor: pointer; transition: all .2s; white-space: nowrap; height: 44px; }
+.btn-agregar svg { width: 14px; height: 14px; flex-shrink: 0; }
+.btn-agregar:hover { background: #ffd700; }
+
+/* ── Estado ── */
 .state-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 80px 20px; color: #555; font-size: .9rem; }
-.bolt-spin { font-size: 2.4rem; animation: boltPulse 1.4s ease-in-out infinite; filter: drop-shadow(0 0 10px #f5c500); }
+.bolt-spin { font-size: 2.4rem; animation: boltPulse 1.4s ease-in-out infinite; }
 @keyframes boltPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 .error-state { color: #e05a45; }
-.retry-btn { background: none; border: 1px solid rgba(220,50,30,.4); color: #e05a45; font-family: 'Barlow Condensed',sans-serif; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; padding: 8px 20px; cursor: pointer; transition: all .2s; }
-.retry-btn:hover { background: rgba(220,50,30,.1); }
+.retry-btn { background: none; border: 1px solid rgba(220,50,30,.4); color: #e05a45; font-family: 'Barlow Condensed',sans-serif; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; padding: 8px 20px; cursor: pointer; }
 
-/* Tabla */
-.table-wrapper { display: flex; flex-direction: column; border: 1px solid rgba(245,197,0,.12); background: #111; animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both; flex: 1; min-height: 0; }
+/* ── Filtros ── */
+.filtros-wrapper { border: 1px solid rgba(245,197,0,.12); background: #0d0d0d; flex-shrink: 0; }
+.filtros-toggle-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.filtros-toggle {
+  display: flex; align-items: center; gap: 7px;
+  background: none; border: 1px solid rgba(245,197,0,.2); color: #888;
+  font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+  padding: 6px 12px; cursor: pointer; transition: all .2s;
+}
+.filtros-toggle svg { width: 13px; height: 13px; flex-shrink: 0; }
+.filtros-toggle:hover { color: var(--gold); border-color: rgba(245,197,0,.4); }
+.filtros-badge { color: var(--gold); font-size: .7rem; }
+.filtros-chevron { transition: transform .25s; }
+.filtros-chevron.open { transform: rotate(180deg); }
+.filtros-count { font-size: .68rem; color: #444; letter-spacing: .06em; margin-left: auto; }
+.filtros-clear-inline {
+  background: none; border: 1px solid rgba(220,50,30,.3); color: #e05a45;
+  font-family: 'Barlow Condensed',sans-serif; font-size: .62rem; letter-spacing: .14em;
+  text-transform: uppercase; padding: 4px 10px; cursor: pointer; transition: all .2s;
+}
+.filtros-clear-inline:hover { background: rgba(220,50,30,.08); }
+.filtros-panel { padding: 14px; border-top: 1px solid rgba(245,197,0,.08); }
+.filtros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.filtro-item { display: flex; flex-direction: column; gap: 5px; }
+.filtro-item label { font-family: 'Barlow Condensed',sans-serif; font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.filtro-item input, .filtro-item select {
+  background: #111; border: 1px solid rgba(245,197,0,.15); color: #f0f0f0;
+  font-family: 'Barlow', sans-serif; font-size: .8rem; padding: 7px 10px; outline: none;
+  transition: border-color .2s;
+}
+.filtro-item input:focus, .filtro-item select:focus { border-color: rgba(245,197,0,.4); }
+.filtro-item select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23f5c500' stroke-width='1.2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+.filtros-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.f-btn { font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; padding: 7px 14px; cursor: pointer; transition: all .2s; border: 1px solid; }
+.f-btn-clear { background: transparent; border-color: rgba(245,197,0,.2); color: #888; }
+.f-btn-clear:hover { border-color: rgba(245,197,0,.4); color: var(--gold); }
+.f-btn-danger { background: transparent; border-color: rgba(220,50,30,.35); color: #e05a45; }
+.f-btn-danger:hover { background: rgba(220,50,30,.08); }
+
+.filtros-slide-enter-active, .filtros-slide-leave-active { transition: all .25s ease; overflow: hidden; }
+.filtros-slide-enter-from, .filtros-slide-leave-to { opacity: 0; max-height: 0; }
+.filtros-slide-enter-to, .filtros-slide-leave-from { opacity: 1; max-height: 400px; }
+
+/* ── Content area ── */
+.content-area { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+/* ── Cards móvil ── */
+.cards-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.plan-card {
+  background: #111;
+  border: 1px solid rgba(245,197,0,.1);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 0;
+  animation: rowIn .35s ease both;
+  transition: border-color .2s;
+}
+.plan-card:hover { border-color: rgba(245,197,0,.22); }
+.plan-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.plan-tipo { display: flex; align-items: center; gap: 6px; }
+.tipo-icon { font-size: .9rem; }
+.tipo-label { font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: 1rem; color: #f0f0f0; letter-spacing: .06em; text-transform: uppercase; }
+.plan-card-precio { display: flex; align-items: baseline; gap: 5px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.04); margin-bottom: 10px; }
+.precio-val { font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1.4rem; color: var(--gold); }
+.precio-desc { font-size: .65rem; color: #444; letter-spacing: .12em; }
+.plan-card-fechas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.fecha-item { display: flex; flex-direction: column; gap: 2px; }
+.fecha-lbl { font-family: 'Barlow Condensed',sans-serif; font-size: .55rem; letter-spacing: .18em; text-transform: uppercase; color: #555; }
+.fecha-val { font-size: .78rem; color: #ccc; }
+.fecha-sep { color: #333; font-size: .8rem; padding-top: 10px; }
+.plan-card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.04); }
+.btn-cal-sm { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid rgba(245,197,0,.25); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; padding: 6px 12px; cursor: pointer; transition: all .2s; }
+.btn-cal-sm svg { width: 12px; height: 12px; flex-shrink: 0; }
+.btn-cal-sm:hover { background: rgba(245,197,0,.1); border-color: var(--gold); }
+.plan-card-actions { display: flex; gap: 4px; }
+.empty-card { text-align: center; color: #444; padding: 40px 20px; font-size: .85rem; background: #111; border: 1px dashed #1a1a1a; }
+.empty-card--full { padding: 56px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty-icon { font-size: 2rem; opacity: .3; filter: grayscale(1); }
+.empty-titulo { font-family: 'Barlow Condensed',sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #333; }
+.empty-sub { font-size: .72rem; color: #2a2a2a; }
+
+/* ── Tabla desktop ── */
+.table-wrapper { display: flex; flex-direction: column; border: 1px solid rgba(245,197,0,.12); background: #111; animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both; flex: 1; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.table-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.table-scroll { overflow-x: auto; overflow-y: auto; flex: 1; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 700px; }
 thead { background: rgba(245,197,0,.06); border-bottom: 1px solid rgba(245,197,0,.15); position: sticky; top: 0; z-index: 2; }
-th { font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: #f5c500; padding: 16px 20px; text-align: left; white-space: nowrap; }
-.th-add { text-align: right; padding-right: 16px; }
-.btn-agregar { display: inline-flex; align-items: center; gap: 7px; background: #f5c500; border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 8px 18px; cursor: pointer; transition: all .2s; white-space: nowrap; }
-.btn-agregar svg { width: 14px; height: 14px; flex-shrink: 0; }
-.btn-agregar:hover { background: #ffd700; box-shadow: 0 0 16px rgba(245,197,0,.35); }
+th { font-family: 'Barlow Condensed',sans-serif; font-size: .68rem; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: var(--gold); padding: 16px 20px; text-align: left; white-space: nowrap; }
+.th-center { text-align: center; }
 td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; vertical-align: middle; white-space: nowrap; }
 .table-row { transition: background .15s; animation: rowIn .35s ease both; }
 .table-row:hover { background: rgba(245,197,0,.04); }
 .table-row:last-child td { border-bottom: none; }
 @keyframes rowIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
-.tipo-label { font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: .92rem; color: #f0f0f0; letter-spacing: .04em; }
-.precio-val { font-family: 'Barlow Condensed',sans-serif; font-weight: 700; font-size: .95rem; color: #f5c500; }
-.estado-badge { display: inline-block; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 4px 12px; border: 1px solid; }
-.badge-pagado    { color: #4ade80; border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.07); }
-.badge-pendiente { color: #f59e0b; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
-.badge-default   { color: #888; border-color: rgba(136,136,136,.3); background: rgba(136,136,136,.06); }
 
-/* Botón calendario */
+/* Botón calendario desktop */
 .td-cal { text-align: center; }
-.btn-cal { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(245,197,0,.25); color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; padding: 6px 14px; cursor: pointer; transition: all .2s; white-space: nowrap; }
-.btn-cal svg { width: 13px; height: 13px; flex-shrink: 0; }
-.btn-cal:hover { background: rgba(245,197,0,.1); border-color: #f5c500; }
-
+.btn-cal { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(245,197,0,.25); color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; padding: 6px 14px; cursor: pointer; transition: all .2s; }
+.btn-cal svg { width: 13px; height: 13px; }
+.btn-cal:hover { background: rgba(245,197,0,.1); border-color: var(--gold); }
 .td-center { text-align: center; }
 .action-btn { background: none; border: 1px solid transparent; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
 .action-btn svg { width: 13px; height: 13px; }
 .edit-btn { color: #555; }
-.edit-btn:hover { color: #f5c500; border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
+.edit-btn:hover { color: var(--gold); border-color: rgba(245,197,0,.4); background: rgba(245,197,0,.07); }
 .delete-btn { color: #555; }
 .delete-btn:hover { color: #e05a45; border-color: rgba(220,50,30,.4); background: rgba(220,50,30,.07); }
+.estado-badge { display: inline-block; font-family: 'Barlow Condensed',sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 4px 12px; border: 1px solid; }
+.badge-pagado    { color: #4ade80; border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.07); }
+.badge-pendiente { color: #f59e0b; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
+.badge-default   { color: #888; border-color: rgba(136,136,136,.3); background: rgba(136,136,136,.06); }
 .empty-row { text-align: center; color: #444; padding: 56px 20px !important; font-size: .88rem; }
-.empty-cta { color: #f5c500; cursor: pointer; margin-left: 8px; text-decoration: underline; }
+.empty-cta { color: var(--gold); cursor: pointer; margin-left: 8px; text-decoration: underline; }
 .table-footer { padding: 13px 20px; border-top: 1px solid rgba(245,197,0,.08); font-size: .7rem; color: #444; letter-spacing: .06em; flex-shrink: 0; }
 .table-footer strong { color: #888; }
 
-/* ══ MODALES ══ */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.modal { background: #111; border: 1px solid rgba(245,197,0,.2); box-shadow: 0 40px 100px rgba(0,0,0,.9),0 0 60px rgba(245,197,0,.05); width: 100%; max-width: 560px; display: flex; flex-direction: column; animation: modalIn .3s cubic-bezier(.16,1,.3,1) both; }
-.modal-cal { max-width: 480px; }
-@keyframes modalIn { from { opacity: 0; transform: scale(.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+/* ── Helpers ── */
+.mobile-only  { display: none !important; }
+.desktop-only { display: flex !important; }
 
-.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 26px 18px; border-bottom: 1px solid rgba(245,197,0,.1); }
-.modal-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: #f5c500; margin-bottom: 5px; }
+/* ══════════════════════════════════════
+   MODALES
+══════════════════════════════════════ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modal { background: #111; border: 1px solid rgba(245,197,0,.2); box-shadow: 0 40px 100px rgba(0,0,0,.9); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; animation: modalIn .3s cubic-bezier(.16,1,.3,1) both; }
+.modal-cal { max-width: 480px; }
+@keyframes modalIn { from { opacity: 0; transform: scale(.96) translateY(12px); } to { opacity: 1; transform: none; } }
+
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 26px 18px; border-bottom: 1px solid rgba(245,197,0,.1); position: sticky; top: 0; background: #111; z-index: 1; }
+.modal-eyebrow { display: block; font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
 .modal-header h2 { font-family: 'Barlow Condensed',sans-serif; font-size: 1.5rem; font-weight: 900; text-transform: uppercase; color: #fff; line-height: 1; }
 .modal-sub { font-size: .75rem; color: #666; margin-top: 4px; }
-.modal-close { background: none; border: none; color: #444; font-size: 1rem; cursor: pointer; padding: 2px; transition: color .2s; line-height: 1; }
-.modal-close:hover { color: #f5c500; }
+.modal-close { background: none; border: none; color: #444; font-size: 1rem; cursor: pointer; padding: 2px; transition: color .2s; }
+.modal-close:hover { color: var(--gold); }
 
-/* Info rápida del plan */
-.cal-info-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 26px; border-bottom: 1px solid rgba(245,197,0,.08); background: rgba(245,197,0,.02); }
+.cal-info-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 26px; border-bottom: 1px solid rgba(245,197,0,.08); background: rgba(245,197,0,.02); }
 .cal-info-item { display: flex; flex-direction: column; gap: 2px; }
 .ci-key { font-family: 'Barlow Condensed',sans-serif; font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: #555; font-weight: 700; }
 .ci-val { font-size: .85rem; color: #e0e0e0; font-weight: 500; }
-.ci-dias { color: #f5c500; font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1rem; }
-.cal-info-divider { color: #f5c500; font-weight: 700; font-size: .9rem; padding-top: 12px; }
+.ci-dias { color: var(--gold); font-family: 'Barlow Condensed',sans-serif; font-weight: 900; font-size: 1rem; }
+.cal-info-divider { color: var(--gold); font-weight: 700; font-size: .9rem; padding-top: 12px; }
 .info-activo  { color: #4ade80 !important; }
 .info-vencido { color: #555 !important; }
 .info-proximo { color: #60a5fa !important; }
 
-/* Calendario dentro del modal */
-.cal-body { padding: 20px 26px; display: flex; flex-direction: column; gap: 14px; }
-
+.cal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; }
 .cal-mes { font-family: 'Barlow Condensed',sans-serif; font-size: .95rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #f0f0f0; }
-.cal-arrow { background: transparent; border: 1px solid rgba(245,197,0,.2); color: #f5c500; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; line-height: 1; transition: all .2s; }
-.cal-arrow:hover { background: rgba(245,197,0,.1); border-color: #f5c500; }
-
+.cal-arrow { background: transparent; border: 1px solid rgba(245,197,0,.2); color: var(--gold); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; line-height: 1; transition: all .2s; }
+.cal-arrow:hover { background: rgba(245,197,0,.1); border-color: var(--gold); }
 .cal-header-row { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 3px; }
-.cal-header-row span { font-family: 'Barlow Condensed',sans-serif; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: #f5c500; padding: 4px 0; }
-
+.cal-header-row span { font-family: 'Barlow Condensed',sans-serif; font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); padding: 4px 0; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .cal-empty { aspect-ratio: 1; }
-.cal-dia { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed',sans-serif; font-size: .8rem; font-weight: 700; border-radius: 2px; transition: all .15s; }
-
+.cal-dia { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 700; border-radius: 2px; }
 .dia-ninguno { color: #bdb9b9; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.03); }
 .dia-activo  { color: #d1fae5; background: rgba(74,222,128,.18); border: 1px solid rgba(74,222,128,.35); }
-.dia-activo:hover { background: rgba(74,222,128,.26); }
 .dia-vencido { color: #555; background: rgba(248,0,0,.12); border: 1px solid rgba(100,100,100,.22); }
-.dia-hoy     { background: #f5c500 !important; color: #0a0a0a !important; border: none !important; font-weight: 900; box-shadow: 0 0 12px rgba(245,197,0,.4); }
-
-/* Leyenda */
-.cal-leyenda { display: flex; gap: 16px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid rgba(245,197,0,.07); }
-.ley-item { display: flex; align-items: center; gap: 6px; font-size: .7rem; color: #666; }
-.ley-dot { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+.dia-hoy     { background: var(--gold) !important; color: #0a0a0a !important; border: none !important; font-weight: 900; }
+.cal-leyenda { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid rgba(245,197,0,.07); }
+.ley-item { display: flex; align-items: center; gap: 5px; font-size: .67rem; color: #666; }
+.ley-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 .dot-activo  { background: rgba(74,222,128,.25); border: 1px solid rgba(74,222,128,.6); }
 .dot-vencido { background: rgba(248,0,0,.12); border: 1px solid rgba(100,100,100,.5); }
-.dot-hoy     { background: #f5c500; border: 1px solid #f5c500; }
+.dot-hoy     { background: var(--gold); }
 .dot-ninguno { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); }
 
-/* Formulario modal */
-.modal-body { padding: 12px 65px; }
+.modal-body { padding: 20px 26px; }
 .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .mfield { display: flex; flex-direction: column; gap: 7px; }
 .mfield label { font-family: 'Barlow Condensed',sans-serif; font-size: .62rem; letter-spacing: .25em; text-transform: uppercase; color: #666; font-weight: 700; }
-.req { color: #f5c500; }
-.mfield input, .mfield select { background: #0d0d0d; border: 1px solid rgba(245,197,0,.15); color: #f0f0f0; font-family: 'Barlow',sans-serif; font-size: .85rem; padding: 10px 12px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
+.req { color: var(--gold); }
+.mfield input, .mfield select { background: #0d0d0d; border: 1px solid rgba(245,197,0,.15); color: #f0f0f0; font-family: 'Barlow',sans-serif; font-size: .85rem; padding: 10px 12px; outline: none; transition: border-color .2s; appearance: none; }
 .mfield input::placeholder { color: #333; }
-.mfield input:focus, .mfield select:focus { border-color: rgba(245,197,0,.5); background: #0f0e09; }
-.mfield select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23f5c500' stroke-width='1.2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-color: #0d0d0d; padding-right: 32px; }
+.mfield input:focus, .mfield select:focus { border-color: rgba(245,197,0,.5); }
+.mfield select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23f5c500' stroke-width='1.2' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-color: #0d0d0d; padding-right: 32px; }
 .mfield select option { background: #111; color: #f0f0f0; }
 input:disabled { opacity: 0.5; cursor: not-allowed; }
 .save-error { color: #e05a45; font-size: .78rem; margin-top: 12px; padding: 9px 13px; background: rgba(220,50,30,.06); border: 1px solid rgba(220,50,30,.25); }
 
-.modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid rgba(245,197,0,.1); }
+.modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 26px; border-top: 1px solid rgba(245,197,0,.1); position: sticky; bottom: 0; background: #111; }
 .btn-cancel { background: transparent; border: 1px solid #222; color: #555; font-family: 'Barlow Condensed',sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; padding: 9px 20px; cursor: pointer; transition: all .2s; }
 .btn-cancel:hover { border-color: rgba(245,197,0,.3); color: #aaa; }
-.btn-save { display: inline-flex; align-items: center; gap: 8px; background: #f5c500; border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 24px; cursor: pointer; transition: all .2s; }
-.btn-save:hover:not(:disabled) { background: #ffd700; box-shadow: 0 0 20px rgba(245,197,0,.3); }
+.btn-save { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); border: none; color: #0a0a0a; font-family: 'Barlow Condensed',sans-serif; font-size: .78rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; padding: 10px 24px; cursor: pointer; transition: all .2s; }
+.btn-save:hover:not(:disabled) { background: #ffd700; }
 .btn-save:disabled { opacity: .5; cursor: not-allowed; }
 .spinner { width: 14px; height: 14px; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -856,18 +1067,73 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .25s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 
-@media (max-width: 860px) {
-  .sidebar { display: none; }
-  .main { padding: 28px 20px 48px; }
-  .modal-grid { grid-template-columns: 1fr; }
+/* ══════════════════════════════════════
+   RESPONSIVE — TABLET
+══════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .main { padding: 32px 28px; }
+  .page-title h1 { font-size: 2.4rem; }
 }
 
-/* Filtros */
-.filtros-box { display: flex; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0d0d0d; border: 1px solid rgba(245,197,0,.1); }
-.filtros-box input, .filtros-box select { background: #111; border: 1px solid rgba(245,197,0,.2); color: #fff; padding: 6px 10px; font-size: 0.8rem; }
-.filtros-box button { background: #f5c500; border: none; padding: 6px 12px; cursor: pointer; font-weight: bold; }
-.filtro-item { display: flex; flex-direction: column; gap: 4px; }
-.filtro-item label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: #f5c500; font-weight: 700; }
-.btn-box { display: flex; gap: 8px; }
-.btn-box button { flex: 1; }
+/* ══════════════════════════════════════
+   RESPONSIVE — MÓVIL
+══════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Ocultar sidebar, mostrar topbar móvil */
+  .sidebar { display: none !important; }
+  .topbar-mobile { display: flex; }
+
+  /* Main ajustado para topbar */
+  .layout { flex-direction: column; }
+  .main {
+    padding: 16px 12px 80px;
+    gap: 14px;
+    min-height: calc(100dvh - var(--topbar-mob-h));
+    overflow-y: auto;
+  }
+
+  /* Título más compacto */
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .page-eyebrow { font-size: .58rem; }
+  .page-title h1 { font-size: 1.8rem; }
+  .header-meta { gap: 8px; }
+  .stat-pill { padding: 7px 16px; }
+  .stat-val { font-size: 1.3rem; }
+
+  /* Cards visibles, tabla oculta */
+  .mobile-only  { display: flex !important; flex-direction: column; }
+  .desktop-only { display: none !important; }
+
+  /* Filtros en móvil con columna única */
+  .filtros-grid { grid-template-columns: 1fr; }
+
+  /* Modales desde abajo */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    max-width: 100%; width: 100%;
+    border-bottom: none;
+    max-height: 92dvh;
+    border-radius: 0;
+    animation: modalInUp .3s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes modalInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-cal { max-width: 100%; }
+  .modal-body { padding: 16px 18px; }
+  .modal-header { padding: 18px 18px 14px; }
+  .modal-footer { padding: 14px 18px; }
+  .cal-info-row { padding: 10px 18px; gap: 10px; }
+  .cal-body { padding: 14px 16px; }
+}
+
+/* Móvil pequeño */
+@media (max-width: 400px) {
+  .page-title h1 { font-size: 1.5rem; }
+  .main { padding: 12px 10px 72px; }
+  .cal-header-row span { font-size: .52rem; }
+  .cal-dia { font-size: .7rem; }
+}
 </style>

@@ -1025,7 +1025,7 @@ onMounted(() => { obtenerUsuarios() })
 
 /* ── Variables ── */
 :root {
-  --topbar-h: 56px;
+  --topbar-h: 52px;
   --sidebar-w: 230px;
   --gold: #f5c500;
   --orange: #ff7a00;
@@ -1039,7 +1039,8 @@ onMounted(() => { obtenerUsuarios() })
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg);
+  background: #0a0a0a;
+  color: #ccc;
   font-family: 'Barlow', sans-serif;
   position: relative;
 }
@@ -1106,6 +1107,7 @@ onMounted(() => { obtenerUsuarios() })
 .layout {
   position: relative; z-index: 1;
   display: flex; width: 100%; height: 100vh;
+  background: #0a0a0a;
 }
 
 /* ── Sidebar ── */
@@ -1160,6 +1162,7 @@ onMounted(() => { obtenerUsuarios() })
   padding: 48px 60px;
   display: flex; flex-direction: column; gap: 26px;
   min-width: 0;
+  background: #0a0a0a;
 }
 
 /* ── Page header (desktop) ── */
@@ -1364,75 +1367,115 @@ td { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.04); color: 
 /* ── Móvil / tablet ── */
 @media (max-width: 768px) {
 
+  /* Fondo oscuro en TODO */
+  html, body, .screen, .layout, .main,
+  .content-area, .cards-list { background: #0a0a0a !important; }
+
   /* Mostrar topbar */
   .topbar { display: flex; }
 
-  /* Sidebar deslizable */
+  /* Sidebar: oculto por defecto, desliza */
   .sidebar {
     position: fixed;
     top: 0; left: 0; bottom: 0;
+    width: 260px;
     transform: translateX(-100%);
     transition: transform .28s cubic-bezier(.16,1,.3,1);
-    width: 260px;
   }
-  .sidebar--open { transform: translateX(0); }
+  .sidebar--open {
+    transform: translateX(0);
+    box-shadow: 8px 0 40px rgba(0,0,0,.8);
+  }
 
-  /* Main ocupa todo */
-  .layout { display: block; }
+  /* Layout: block, main cubre toda la pantalla */
+  .layout { display: block; position: relative; }
   .main {
-    width: 100%;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
     height: 100vh;
-    padding: calc(var(--topbar-h) + 16px) 16px 16px;
-    gap: 14px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(var(--topbar-h) + 14px) 14px 20px;
+    gap: 12px;
   }
 
   /* Ocultar page-header de escritorio */
   .page-header { display: none; }
 
-  /* Mostrar tabs de navegación */
+  /* Tabs de navegación */
   .mobile-tabs {
     display: flex; gap: 0;
-    border: 1px solid rgba(245,197,0,.15);
+    border: 1px solid rgba(245,197,0,.18);
     overflow: hidden;
     flex-shrink: 0;
   }
   .mobile-tab {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
     padding: 12px 8px;
-    background: transparent; border: none;
+    background: #0d0d0d; border: none;
     color: #555; font-family: 'Barlow Condensed',sans-serif;
-    font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    font-size: .82rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
     cursor: pointer; transition: all .2s;
     border-right: 1px solid rgba(245,197,0,.1);
   }
   .mobile-tab:last-child { border-right: none; }
   .mobile-tab svg { width: 14px; height: 14px; }
   .mobile-tab:hover { color: #ccc; background: rgba(245,197,0,.04); }
-  .mobile-tab.active { color: var(--gold); background: rgba(245,197,0,.08); border-bottom: 2px solid var(--gold); }
+  .mobile-tab.active {
+    color: var(--gold);
+    background: rgba(245,197,0,.08);
+    border-bottom: 2px solid var(--gold);
+  }
 
-  /* Mostrar botones de acción inline */
+  /* Barra filtros */
+  .filters-bar { gap: 8px; flex-wrap: wrap; }
+  .search-wrap { max-width: 100%; flex: 1 1 0; min-width: 0; }
+  .search-input { background: #0d0d0d; }
+
+  /* Botones de acción inline */
   .mobile-actions { display: flex; }
 
-  /* Ocultar tabla, mostrar cards */
+  /* Cards visibles, tabla oculta */
   .mobile-only  { display: flex !important; }
   .desktop-only { display: none !important; }
 
-  /* Cards scroll */
-  .cards-list { overflow-y: auto; flex: 1; }
+  /* Cards */
+  .user-card, .empty-card { background: #0f0f0f; }
+  .cards-list { flex: 1; }
 
-  /* Modal full-width en móvil */
-  .modal-box { max-width: 100%; border-left: none; border-right: none; max-height: 95vh; }
+  /* Rol chips horizontal */
+  .rol-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; width: 100%; }
+  .rol-chip { white-space: nowrap; padding: 8px 14px; font-size: .72rem; }
+
+  /* Modales desde abajo */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal-box {
+    max-width: 100%; width: 100%;
+    border: 1px solid rgba(245,197,0,.2);
+    border-bottom: none;
+    border-radius: 0;
+    max-height: 92vh;
+    background: #111;
+    animation: modalInUp .3s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes modalInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .modal-grid { grid-template-columns: 1fr; }
   .pp-modal { max-width: 100%; }
   .pp-grid { grid-template-columns: 1fr; }
-  .pp-price { font-size: 1.4rem; }
+  .pp-price { font-size: 1.5rem; }
 }
 
 /* ── Móvil pequeño ── */
 @media (max-width: 400px) {
-  .main { padding: calc(var(--topbar-h) + 12px) 12px 12px; gap: 12px; }
-  .search-input { font-size: .8rem; }
+  .main { padding: calc(var(--topbar-h) + 10px) 10px 16px; gap: 10px; }
+  .topbar { padding: 0 10px; }
+  .search-input { font-size: .8rem; padding: 10px 12px 10px 34px; }
   .card-name { font-size: .82rem; }
-  .topbar { padding: 0 12px; }
+  .mobile-tab { font-size: .72rem; padding: 10px 4px; gap: 5px; }
+  .mobile-tab svg { width: 12px; height: 12px; }
 }
 </style>

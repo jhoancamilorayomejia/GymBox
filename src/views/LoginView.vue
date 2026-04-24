@@ -1019,7 +1019,7 @@ const registerCustomer = async () => {
 /* ═══════════════════════════════════════
    RESPONSIVE — MÓVIL  (≤600px)
 ═══════════════════════════════════════ */
-@media(max-width:600px){
+@media(max-width:1600px){
   /* Navbar */
   .nav-inner{height:56px;padding:0 16px}
   .logo-svg{width:100px}
@@ -1076,7 +1076,7 @@ const registerCustomer = async () => {
 /* ═══════════════════════════════════════
    RESPONSIVE — MÓVIL PEQUEÑO  (≤380px)
 ═══════════════════════════════════════ */
-@media(max-width:380px){
+@media(max-width:1380px){
   .hero{padding:72px 12px 48px}
   .section-inner{padding:0 12px}
   .modal-card{padding:24px 14px 20px;border-left-width:3px}

@@ -116,12 +116,28 @@ const regError     = ref('')
 const regLoading   = ref(false)
 const showRegPassword = ref(false)
 
+/* ── Validación de contraseña: mínimo 8 caracteres, al menos 1 letra y 1 número ── */
+const validatePassword = (pwd) => {
+  if (pwd.length < 8) return 'La contraseña debe tener al menos 8 caracteres'
+  if (!/[a-zA-Z]/.test(pwd)) return 'La contraseña debe contener al menos una letra'
+  if (!/[0-9]/.test(pwd)) return 'La contraseña debe contener al menos un número'
+  return ''
+}
+
 const registerCustomer = async () => {
   regError.value = ''
+
+  const pwdError = validatePassword(regPassword.value)
+  if (pwdError) {
+    regError.value = pwdError
+    return
+  }
+
   if (regPassword.value !== regPassword2.value) {
     regError.value = 'Las contraseñas no coinciden'
     return
   }
+
   regLoading.value = true
   try {
     const res = await fetch('/api/new-public-customers', {
@@ -471,7 +487,7 @@ const registerCustomer = async () => {
 
           <form class="login-form" @submit.prevent="loginAdmin">
             <div class="field" :class="{ filled: loginEmail }">
-              <label>Usuario</label>
+              <label>Usuario/Cedula</label>
               <div class="input-wrap">
                 <svg class="input-icon" viewBox="0 0 20 20" fill="none">
                   <circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/>
@@ -524,12 +540,12 @@ const registerCustomer = async () => {
 
     <!-- MODAL REGISTRO -->
     <transition name="modal-fade">
-      <div v-if="showRegisterModal" class="modal-overlay" @click.self="showRegisterModal = false">
-        <div class="modal-card">
+      <div v-if="showRegisterModal" class="modal-overlay modal-overlay--register" @click.self="showRegisterModal = false">
+        <div class="modal-card modal-card--register">
           <button class="modal-close" @click="showRegisterModal = false">✕</button>
 
-          <div class="modal-brand">
-            <svg viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" style="width:140px">
+          <div class="modal-brand modal-brand--sm">
+            <svg viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" style="width:110px">
               <polygon points="52,4 36,40 48,40 32,76 72,32 56,32 78,4" fill="#f5c500"/>
               <text x="78" y="38" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#f5c500" letter-spacing="-1">RAYO</text>
               <text x="78" y="68" font-family="'Barlow Condensed',sans-serif" font-weight="900" font-size="34" fill="#fff" letter-spacing="-1">BOX</text>
@@ -537,16 +553,16 @@ const registerCustomer = async () => {
             </svg>
           </div>
 
-          <div class="modal-header">
+          <div class="modal-header modal-header--sm">
             <div class="modal-header-top">
-              <div class="bolt-badge">⚡</div>
+              <div class="bolt-badge bolt-badge--sm">⚡</div>
               <h1>Crear cuenta</h1>
             </div>
             <p>Completá tus datos para unirte a Rayo Box</p>
           </div>
           <div class="modal-divider"></div>
 
-          <form class="login-form" @submit.prevent="registerCustomer">
+          <form class="login-form login-form--compact" @submit.prevent="registerCustomer">
             <div class="reg-grid">
               <div class="field" :class="{ filled: regName }">
                 <label>Nombre</label>
@@ -592,36 +608,40 @@ const registerCustomer = async () => {
               </div>
             </div>
 
-            <div class="field" :class="{ filled: regPassword }">
-              <label>Contraseña</label>
-              <div class="input-wrap">
-                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
-                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-                <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="Mínimo 8 caracteres" required />
-                <button type="button" class="eye-btn" @click="showRegPassword = !showRegPassword">
-                  <svg v-if="!showRegPassword" viewBox="0 0 20 20" fill="none">
-                    <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
-                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+            <div class="reg-grid">
+              <div class="field" :class="{ filled: regPassword }">
+                <label>Contraseña</label>
+                <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                   </svg>
-                  <svg v-else viewBox="0 0 20 20" fill="none">
-                    <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  <input v-model="regPassword" :type="showRegPassword ? 'text' : 'password'" placeholder="Mín. 8 car., letras y números" required />
+                  <button type="button" class="eye-btn" @click="showRegPassword = !showRegPassword">
+                    <svg v-if="!showRegPassword" viewBox="0 0 20 20" fill="none">
+                      <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" stroke-width="1.4"/>
+                      <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 20 20" fill="none">
+                      <path d="M3 3l14 14M8.5 8.7A2.5 2.5 0 0013 12.3M6 6.1C3.9 7.4 2 10 2 10s3 6 8 6c1.6 0 3-.5 4.2-1.3M10 4c4.2.5 6.6 3.7 8 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="field" :class="{ filled: regPassword2 }">
+                <label>Confirmar</label>
+                <div class="input-wrap">
+                  <svg class="input-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                   </svg>
-                </button>
+                  <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="Repetí tu contraseña" required />
+                </div>
               </div>
             </div>
 
-            <div class="field" :class="{ filled: regPassword2 }">
-              <label>Confirmar contraseña</label>
-              <div class="input-wrap">
-                <svg class="input-icon" viewBox="0 0 20 20" fill="none">
-                  <rect x="4" y="9" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M7 9V6.5a3 3 0 016 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-                <input v-model="regPassword2" :type="showRegPassword ? 'text' : 'password'" placeholder="Repetí tu contraseña" required />
-              </div>
-            </div>
+            <!-- Hint de requisitos de contraseña -->
+            <p class="pwd-hint">⚡ Mínimo 8 caracteres, debe incluir letras y números.</p>
 
             <transition name="shake">
               <div v-if="regError" class="error-box"><span>⚡</span> {{ regError }}</div>
@@ -846,7 +866,7 @@ const registerCustomer = async () => {
 .footer-links a:hover{color:#f5c500}
 .footer-copy{max-width:1200px;margin:0 auto;padding:20px 32px 0;font-size:.68rem;color:#2a2a2a;letter-spacing:.1em;text-transform:uppercase}
 
-/* ── MODAL ── */
+/* ── MODAL BASE ── */
 .modal-overlay{
   position:fixed;inset:0;z-index:200;
   background:rgba(0,0,0,.88);backdrop-filter:blur(10px);
@@ -856,7 +876,6 @@ const registerCustomer = async () => {
 .modal-fade-enter-active,.modal-fade-leave-active{transition:opacity .3s}
 .modal-fade-enter-from,.modal-fade-leave-to{opacity:0}
 
-/* Card desktop */
 .modal-card{
   position:relative;width:100%;max-width:500px;
   background:#0f0f0f;
@@ -869,6 +888,26 @@ const registerCustomer = async () => {
 }
 @keyframes cardIn{from{opacity:0;transform:scale(.96) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
 
+/* ── MODAL REGISTRO — más compacto ── */
+.modal-card--register{
+  max-width:560px;
+  padding:36px 40px 32px;
+}
+.modal-brand--sm{margin-bottom:12px}
+.modal-header--sm{margin-bottom:20px}
+.modal-header--sm .modal-header-top{margin-bottom:4px}
+.modal-header--sm h1{font-size:1.7rem}
+.modal-header--sm p{font-size:.78rem;padding-left:52px;margin-top:4px}
+.bolt-badge--sm{width:38px;height:38px;font-size:1.1rem}
+
+/* Formulario compacto para registro */
+.login-form--compact{gap:14px}
+.login-form--compact .field label{font-size:.65rem;letter-spacing:.24em}
+.login-form--compact .input-wrap input{padding:12px 16px 12px 42px;font-size:.88rem}
+
+/* Hint de contraseña */
+.pwd-hint{font-size:.68rem;color:#555;letter-spacing:.04em;padding:0 2px}
+
 /* Botón cerrar */
 .modal-close{
   position:absolute;top:18px;right:20px;
@@ -880,10 +919,7 @@ const registerCustomer = async () => {
 }
 .modal-close:hover{background:rgba(245,197,0,.1);border-color:rgba(245,197,0,.4);color:#f5c500}
 
-/* Brand logo dentro del modal */
 .modal-brand{margin-bottom:20px}
-
-/* Header */
 .modal-header{margin-bottom:36px}
 .modal-header-top{display:flex;align-items:center;gap:14px;margin-bottom:8px}
 .bolt-badge{
@@ -900,11 +936,8 @@ const registerCustomer = async () => {
   letter-spacing:.04em;color:#fff;line-height:1;margin:0;
 }
 .modal-header p{font-size:.82rem;color:#555;margin-top:6px;letter-spacing:.03em;padding-left:58px}
+.modal-divider{height:1px;background:linear-gradient(to right,rgba(245,197,0,.3),transparent);margin-bottom:24px}
 
-/* Divisor */
-.modal-divider{height:1px;background:linear-gradient(to right,rgba(245,197,0,.3),transparent);margin-bottom:32px}
-
-/* Formulario */
 .login-form{display:flex;flex-direction:column;gap:22px}
 .field{display:flex;flex-direction:column;gap:8px}
 .field label{
@@ -914,7 +947,6 @@ const registerCustomer = async () => {
 }
 .field.filled label,.field:focus-within label{color:#f5c500}
 
-/* Input wrap con borde inferior animado */
 .input-wrap{position:relative;display:flex;align-items:center}
 .input-icon{position:absolute;left:14px;width:16px;height:16px;color:#333;pointer-events:none;transition:color .2s;flex-shrink:0}
 .field:focus-within .input-icon{color:#f5c500}
@@ -939,15 +971,10 @@ const registerCustomer = async () => {
 }
 .field.filled .input-wrap input{border-bottom-color:rgba(245,197,0,.4)}
 
-/* Input sin icono izquierdo (registro) */
-.input-wrap input.no-icon{padding-left:16px}
-
-/* Eye button */
 .eye-btn{position:absolute;right:12px;background:none;border:none;cursor:pointer;width:24px;height:24px;color:#2e2e2e;padding:0;display:flex;align-items:center;justify-content:center;transition:color .2s}
 .eye-btn:hover{color:#f5c500}
 .eye-btn svg{width:16px;height:16px}
 
-/* Error */
 .error-box{
   background:rgba(220,50,30,.06);
   border-left:3px solid #e05a45;
@@ -957,7 +984,6 @@ const registerCustomer = async () => {
 .shake-enter-active{animation:shake .4s cubic-bezier(.36,.07,.19,.97)}
 @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
 
-/* Botón submit — relleno dorado desde el inicio */
 .btn-login{
   position:relative;width:100%;padding:17px;
   background:#f5c500;
@@ -969,30 +995,21 @@ const registerCustomer = async () => {
   display:flex;align-items:center;justify-content:center;
   transition:background .25s,transform .15s;
 }
-.btn-login::after{
-  content:'';position:absolute;inset:0;
-  background:rgba(255,255,255,0);
-  transition:background .25s;
-}
 .btn-login:hover{background:#ffd633;transform:translateY(-1px)}
 .btn-login:active{transform:translateY(0)}
 .btn-login:disabled{opacity:.45;cursor:not-allowed;transform:none}
-/* Eliminamos btn-bg ya que ahora usamos fondo sólido */
 .btn-bg{display:none}
 .btn-label{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
 .spinner{width:15px;height:15px;animation:spin .7s linear infinite;border:2px solid rgba(0,0,0,.2);border-top-color:#0a0a0a;border-radius:50%}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Nota footer */
 .modal-footer-note{text-align:center;font-size:.65rem;color:#222;letter-spacing:.12em;text-transform:uppercase;margin-top:28px}
-
-/* Link secundario (¿Ya tenés cuenta?) */
 .modal-switch-link{text-align:center;font-size:.78rem;color:#444;margin-top:18px}
 .modal-switch-link button{background:none;border:none;color:#f5c500;cursor:pointer;font-size:.78rem;font-weight:600;text-decoration:underline;padding:0;transition:color .2s}
 .modal-switch-link button:hover{color:#ffd633}
 
 /* ── REGISTRO GRID ── */
-.reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
 /* ═══════════════════════════════════════
    RESPONSIVE — TABLET  (≤1000px)
@@ -1006,18 +1023,11 @@ const registerCustomer = async () => {
    RESPONSIVE — TABLET  (≤900px)
 ═══════════════════════════════════════ */
 @media(max-width:900px){
-  /* Navbar */
   .nav-links{display:none}
   .nav-mobile{display:flex}
   .nav-inner{padding:0 20px}
-
-  /* Sede */
   .sede-card{grid-template-columns:1fr}
-
-  /* Hero badge */
   .hero-badge{display:none}
-
-  /* Sections */
   .sede-section,.planes-section,.disciplinas-section,.plataforma-section{padding:72px 0}
 }
 
@@ -1037,7 +1047,7 @@ const registerCustomer = async () => {
   .hero-ctas{flex-direction:column;gap:12px}
   .btn-primary,.btn-secondary{width:100%;text-align:center;padding:14px 20px;font-size:.85rem}
 
-  /* Sections padding & lateral */
+  /* Sections */
   .section-inner{padding:0 16px}
   .sede-section,.planes-section,.disciplinas-section,.plataforma-section{padding:56px 0}
   .section-sub{margin-bottom:32px}
@@ -1047,7 +1057,7 @@ const registerCustomer = async () => {
   .sede-map-placeholder{min-height:160px}
   .btn-sede{width:100%;text-align:center}
 
-  /* Planes — 1 columna en móvil */
+  /* Planes */
   .planes-grid{grid-template-columns:1fr}
   .plan-card{padding:28px 20px}
 
@@ -1055,7 +1065,7 @@ const registerCustomer = async () => {
   .disc-grid{grid-template-columns:1fr}
   .disc-img-wrap{height:180px}
 
-  /* Plataforma mock — ocultar sidebar para no aplastar */
+  /* Mock */
   .mock-sidebar{display:none}
   .mock-layout{min-height:auto}
   .mock-counters{position:static;margin-top:4px}
@@ -1067,7 +1077,7 @@ const registerCustomer = async () => {
   .footer-links{flex-direction:row;flex-wrap:wrap;gap:14px}
   .footer-copy{padding:16px 16px 0;text-align:center}
 
-  /* Modal — bottom sheet ocupa casi toda la pantalla */
+  /* ── MODAL LOGIN — bottom sheet ── */
   .modal-overlay{
     padding:0;
     align-items:flex-end;
@@ -1076,13 +1086,14 @@ const registerCustomer = async () => {
   .modal-card{
     max-width:100%;
     width:100%;
-    min-height:92dvh;
+    min-height:auto;
+    max-height:92dvh;
     border-left:none;
     border-top:3px solid #f5c500;
     border-right:none;
     border-bottom:none;
     border-radius:0;
-    padding:36px 24px 40px;
+    padding:32px 20px 36px;
     margin:0;
     animation:sheetUp .35s cubic-bezier(.16,1,.3,1) both;
     display:flex;
@@ -1090,17 +1101,43 @@ const registerCustomer = async () => {
     overflow-y:auto;
   }
   @keyframes sheetUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-  .login-form{flex:1}
+
+  /* ── MODAL REGISTRO — bottom sheet compacto en móvil ── */
+  .modal-overlay--register{
+    align-items:flex-end;
+  }
+  .modal-card--register{
+    max-width:100%;
+    width:100%;
+    padding:24px 16px 28px;
+    max-height:96dvh;
+    overflow-y:auto;
+    border-left:none;
+    border-top:3px solid #f5c500;
+  }
+  /* Logo más chico en móvil */
+  .modal-brand--sm svg{ width:88px !important }
+  .modal-header--sm h1{ font-size:1.4rem }
+  .modal-header--sm p{ padding-left:0; font-size:.74rem }
+  .bolt-badge--sm{ width:32px; height:32px; font-size:.95rem }
+  /* Campos en 2 columnas → 1 columna en móvil muy pequeño */
+  .reg-grid{ gap:10px }
+  /* Inputs un poco más compactos */
+  .login-form--compact .input-wrap input{ padding:11px 14px 11px 40px; font-size:.85rem }
+  .login-form--compact{ gap:10px }
+  .modal-divider{ margin-bottom:16px }
+  .btn-login{ padding:16px; font-size:.95rem }
+  .modal-switch-link{ margin-top:12px }
+  .modal-footer-note{ margin-top:16px }
+
+  /* Login modal ajustes */
   .modal-header p{padding-left:0;margin-top:10px}
   .modal-header h1{font-size:1.8rem}
   .bolt-badge{width:40px;height:40px;font-size:1.2rem}
-  /* Inputs más grandes en móvil para facilitar toque */
   .input-wrap input{padding-top:17px;padding-bottom:17px;font-size:1rem}
   .btn-login{padding:20px;font-size:1rem}
   .modal-brand svg{width:110px}
-
-  /* Registro grid → 1 columna */
-  .reg-grid{grid-template-columns:1fr}
+  .login-form{flex:1}
 }
 
 /* ═══════════════════════════════════════
@@ -1110,7 +1147,10 @@ const registerCustomer = async () => {
   .hero{padding:72px 12px 48px}
   .section-inner{padding:0 12px}
   .modal-card{padding:28px 18px 36px}
+  .modal-card--register{padding:20px 14px 24px}
   .plan-card{padding:22px 14px}
   .mock-cal-cell{font-size:.48rem}
+  /* En pantallas muy pequeñas, reg-grid pasa a 1 columna */
+  .reg-grid{grid-template-columns:1fr}
 }
 </style>
